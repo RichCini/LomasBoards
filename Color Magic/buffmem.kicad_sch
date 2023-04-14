@@ -6,7 +6,7 @@
 
   (title_block
     (title "Lomas Color Magic Redux")
-    (date "2023-03-04")
+    (date "2023-04-14")
     (rev "1.0-001")
     (company "Lomas Data Produtcs")
     (comment 1 "Redraw/modifications (c) Richard A. Cini")
@@ -858,14 +858,8 @@
     )
   )
 
-  (junction (at 125.476 126.746) (diameter 0) (color 0 0 0 0)
-    (uuid 29601899-16b6-4691-aa0c-79594c946b15)
-  )
   (junction (at 113.284 155.702) (diameter 0) (color 0 0 0 0)
     (uuid 81776b7f-8ff8-46d5-bb80-861d63d2c52a)
-  )
-  (junction (at 125.476 68.58) (diameter 0) (color 0 0 0 0)
-    (uuid f9d0bb50-2d15-4826-bdc7-36a8c94942ea)
   )
 
   (no_connect (at 213.36 87.63) (uuid 242a896e-5472-4b85-b1f4-9257c4040963))
@@ -877,10 +871,6 @@
   (no_connect (at 101.346 191.77) (uuid c8d6c0a8-d9af-462b-b537-a672eab8826b))
   (no_connect (at 126.746 191.77) (uuid df214224-062e-4930-85d2-1ad90b2d3a45))
 
-  (wire (pts (xy 138.176 126.746) (xy 125.476 126.746))
-    (stroke (width 0) (type default) (color 0 0 0 0))
-    (uuid 0813068c-b7e0-4c14-90ac-2322fd27a8f5)
-  )
   (wire (pts (xy 238.76 50.292) (xy 238.76 52.832))
     (stroke (width 0) (type default) (color 0 0 0 0))
     (uuid 14e8f32e-20b5-4172-a9a5-4c3ddca7301a)
@@ -896,10 +886,6 @@
   (wire (pts (xy 138.176 121.666) (xy 138.176 126.746))
     (stroke (width 0) (type default) (color 0 0 0 0))
     (uuid 742aaab9-84a8-42f7-a7d5-64a23a5d2a25)
-  )
-  (wire (pts (xy 138.176 68.58) (xy 125.476 68.58))
-    (stroke (width 0) (type default) (color 0 0 0 0))
-    (uuid 7e7f4b32-67f0-40d3-b11f-77e35c46827c)
   )
   (wire (pts (xy 113.284 155.702) (xy 113.284 162.052))
     (stroke (width 0) (type default) (color 0 0 0 0))
@@ -947,6 +933,15 @@
   (text "EVEN" (at 123.19 44.45 0)
     (effects (font (size 1.27 1.27)) (justify left bottom))
     (uuid 4f1d1f2b-7062-4aeb-bffd-fb4ecbb326f1)
+  )
+
+  (label "ZERO" (at 138.176 124.714 0)
+    (effects (font (size 1.27 1.27)) (justify left bottom))
+    (uuid 45c207b0-ba3d-4450-ac30-0aa3f61dddd4)
+  )
+  (label "ZERO" (at 138.176 66.294 0)
+    (effects (font (size 1.27 1.27)) (justify left bottom))
+    (uuid 7cce89e1-fd7c-4eaa-bbbf-31ce5b1344e2)
   )
 
   (global_label "MDO15" (shape bidirectional) (at 112.776 103.886 180) (fields_autoplaced)
