@@ -1,0 +1,100 @@
+LISTING FOR LOGIC DESCRIPTION FILE: PAL_U1TL.pld                     Page 1
+
+CUPL(WM): Universal Compiler for Programmable Logic
+Version 5.0a Serial# 60008009
+Copyright (c) 1983, 1998 Logical Devices, Inc.
+Created Tue May 09 19:13:58 2023
+
+  1:Name     LomasCM;
+  2:PartNo   PAL_U1;
+  3:Date     05-09-2023;
+  4:Revision 01;
+  5:Designer ;
+  6:Company  ;
+  7:Assembly ;
+  8:Location ;
+  9:Device   g16v8a;
+ 10:
+ 11:/* Dedicated input pins */
+ 12:
+ 13:pin 1   = CHG_DOTS;     /* Input */
+ 14:pin 2   = nCURSOR_DLY;  /* Input */
+ 15:pin 3   = ENABLE_BLINK; /* Input */
+ 16:pin 4   = AT7;          /* Input */
+ 17:pin 5   = BLINK;        /* Input */
+ 18:pin 6   = CURSOR_BLINK; /* Input */
+ 19:pin 7   = GA12;         /* Input */
+ 20:pin 8   = GA13;         /* Input */
+ 21:pin 9   = RA0;          /* Input */
+ 22:pin 11  = RA1;          /* Input */
+ 23:
+ 24:/* Programmable output pins */
+ 25:
+ 26:pin 12  = ALPHA_DOTS;   /* Combinatorial output */
+ 27:pin 13  = DA13;         /* Combinatorial output */
+ 28:pin 14  = DA12;         /* Fixed high output */
+ 29:pin 15  = NC;           /* Fixed high output */
+ 30:pin 16  = GRPH;         /* Fixed high output */
+ 31:pin 17  = PORTC2;       /* Fixed high output */
+ 32:pin 18  = PORTC3;       /* Fixed high output */
+ 33:pin 19  = NC1;          /* Combinatorial output */
+ 34:
+ 35:/* Output equations */
+ 36:
+ 37:!NC1        = !GA13       & !RA1        & !NC 
+ 38:            # !GA13       &  RA1        & !NC 
+ 39:            # !GA13       & !RA1        &  NC 
+ 40:            #  GA13       & !RA1        &  NC;
+ 41: PORTC3     = 'b'1;
+ 42: PORTC2     = 'b'1;
+ 43: GRPH       = 'b'1;
+ 44: NC         = 'b'1;
+ 45: DA12       = 'b'1;
+ 46:!DA13       = !GA12       & !RA0        & !NC 
+ 47:            # !GA12       &  RA0        & !NC 
+ 48:            # !GA12       & !RA0        &  NC 
+ 49:            #  GA12       & !RA0        &  NC;
+ 50: ALPHA_DOTS = !CHG_DOTS   &  nCURSOR_DLY & !ENABLE_BLINK & !AT7        & !BLINK      & !CURSOR_BLINK 
+ 51:            # !CHG_DOTS   &  nCURSOR_DLY &  ENABLE_BLINK & !AT7        & !BLINK      & !CURSOR_BLINK 
+ 52:            # !CHG_DOTS   &  nCURSOR_DLY & !ENABLE_BLINK &  AT7        & !BLINK      & !CURSOR_BLINK 
+ 53:            # !CHG_DOTS   &  nCURSOR_DLY &  ENABLE_BLINK &  AT7        & !BLINK      & !CURSOR_BLINK 
+
+LISTING FOR LOGIC DESCRIPTION FILE: PAL_U1TL.pld                     Page 2
+
+CUPL(WM): Universal Compiler for Programmable Logic
+Version 5.0a Serial# 60008009
+Copyright (c) 1983, 1998 Logical Devices, Inc.
+Created Tue May 09 19:13:58 2023
+
+ 54:            #  CHG_DOTS   &  nCURSOR_DLY &  ENABLE_BLINK &  AT7        & !BLINK      & !CURSOR_BLINK 
+ 55:            # !CHG_DOTS   &  nCURSOR_DLY & !ENABLE_BLINK & !AT7        &  BLINK      & !CURSOR_BLINK 
+ 56:            # !CHG_DOTS   &  nCURSOR_DLY &  ENABLE_BLINK & !AT7        &  BLINK      & !CURSOR_BLINK 
+ 57:            # !CHG_DOTS   &  nCURSOR_DLY & !ENABLE_BLINK &  AT7        &  BLINK      & !CURSOR_BLINK 
+ 58:            # !CHG_DOTS   &  nCURSOR_DLY &  ENABLE_BLINK &  AT7        &  BLINK      & !CURSOR_BLINK 
+ 59:            # !CHG_DOTS   & !nCURSOR_DLY & !ENABLE_BLINK & !AT7        & !BLINK      &  CURSOR_BLINK 
+ 60:            # !CHG_DOTS   &  nCURSOR_DLY & !ENABLE_BLINK & !AT7        & !BLINK      &  CURSOR_BLINK 
+ 61:            # !CHG_DOTS   & !nCURSOR_DLY &  ENABLE_BLINK & !AT7        & !BLINK      &  CURSOR_BLINK 
+ 62:            # !CHG_DOTS   &  nCURSOR_DLY &  ENABLE_BLINK & !AT7        & !BLINK      &  CURSOR_BLINK 
+ 63:            # !CHG_DOTS   & !nCURSOR_DLY & !ENABLE_BLINK &  AT7        & !BLINK      &  CURSOR_BLINK 
+ 64:            # !CHG_DOTS   &  nCURSOR_DLY & !ENABLE_BLINK &  AT7        & !BLINK      &  CURSOR_BLINK 
+ 65:            # !CHG_DOTS   & !nCURSOR_DLY &  ENABLE_BLINK &  AT7        & !BLINK      &  CURSOR_BLINK 
+ 66:            # !CHG_DOTS   &  nCURSOR_DLY &  ENABLE_BLINK &  AT7        & !BLINK      &  CURSOR_BLINK 
+ 67:            #  CHG_DOTS   &  nCURSOR_DLY &  ENABLE_BLINK &  AT7        & !BLINK      &  CURSOR_BLINK 
+ 68:            # !CHG_DOTS   & !nCURSOR_DLY & !ENABLE_BLINK & !AT7        &  BLINK      &  CURSOR_BLINK 
+ 69:            # !CHG_DOTS   &  nCURSOR_DLY & !ENABLE_BLINK & !AT7        &  BLINK      &  CURSOR_BLINK 
+ 70:            # !CHG_DOTS   & !nCURSOR_DLY &  ENABLE_BLINK & !AT7        &  BLINK      &  CURSOR_BLINK 
+ 71:            # !CHG_DOTS   &  nCURSOR_DLY &  ENABLE_BLINK & !AT7        &  BLINK      &  CURSOR_BLINK 
+ 72:            # !CHG_DOTS   & !nCURSOR_DLY & !ENABLE_BLINK &  AT7        &  BLINK      &  CURSOR_BLINK 
+ 73:            # !CHG_DOTS   &  nCURSOR_DLY & !ENABLE_BLINK &  AT7        &  BLINK      &  CURSOR_BLINK 
+ 74:            # !CHG_DOTS   & !nCURSOR_DLY &  ENABLE_BLINK &  AT7        &  BLINK      &  CURSOR_BLINK 
+ 75:            # !CHG_DOTS   &  nCURSOR_DLY &  ENABLE_BLINK &  AT7        &  BLINK      &  CURSOR_BLINK;
+ 76:
+ 77:/* End */
+ 78:
+ 79:
+ 80:
+
+
+
+Jedec Fuse Checksum       (5b32)
+Jedec Transmit Checksum   (0a55)
