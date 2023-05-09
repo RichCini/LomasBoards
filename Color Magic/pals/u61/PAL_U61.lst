@@ -1,0 +1,79 @@
+LISTING FOR LOGIC DESCRIPTION FILE: PAL_U61.pld                      Page 1
+
+CUPL(WM): Universal Compiler for Programmable Logic
+Version 5.0a Serial# 60008009
+Copyright (c) 1983, 1998 Logical Devices, Inc.
+Created Fri Apr 07 15:06:36 2023
+
+  1:Name     LomasCM;
+  2:PartNo   PAL_U61;
+  3:Date     04-07-2023;
+  4:Revision 01;
+  5:Designer ;
+  6:Company  ;
+  7:Assembly ;
+  8:Location ;
+  9:Device   g16v8a;
+ 10:
+ 11:/* Dedicated input pins */
+ 12:
+ 13:pin 1   = nWR;     /* Input */
+ 14:pin 2   = DBIN;    /* Input */
+ 15:pin 3   = SMEMR;   /* Input */
+ 16:pin 4   = SOUT;    /* Input */
+ 17:pin 5   = sWO;     /* Input */
+ 18:pin 6   = A0;      /* Input */
+ 19:pin 7   = XTRQ;    /* Input */
+ 20:pin 8   = HCLK;    /* Input */
+ 21:pin 9   = A14;     /* Unused input */
+ 22:pin 11  = HI_ADDR; /* Input */
+ 23:
+ 24:/* Programmable output pins */
+ 25:
+ 26:pin 12  = MEMCS;   /* Combinatorial output */
+ 27:pin 13  = nEN2;    /* Combinatorial output */
+ 28:pin 14  = nEN3;    /* Combinatorial output */
+ 29:pin 15  = nEN4;    /* Combinatorial output */
+ 30:pin 16  = nEN5;    /* Combinatorial output */
+ 31:pin 17  = nEN6;    /* Combinatorial output */
+ 32:pin 18  = nODDWR;  /* Combinatorial output */
+ 33:pin 19  = nEVNWR;  /* Combinatorial output */
+ 34:
+ 35:/* Output equations */
+ 36:
+ 37:!nEVNWR = !nWR    & !SOUT   & !sWO    & !A0     & !XTRQ   &  HCLK   & !HI_ADDR 
+ 38:        # !nWR    & !SOUT   & !sWO    &  A0     & !XTRQ   &  HCLK   & !HI_ADDR 
+ 39:        # !nWR    & !SOUT   & !sWO    & !A0     &  XTRQ   &  HCLK   & !HI_ADDR;
+ 40:!nODDWR = !nWR    & !SOUT   & !sWO    & !A0     & !XTRQ   &  HCLK   & !HI_ADDR 
+ 41:        # !nWR    & !SOUT   & !sWO    &  A0     & !XTRQ   &  HCLK   & !HI_ADDR 
+ 42:        # !nWR    & !SOUT   & !sWO    &  A0     &  XTRQ   &  HCLK   & !HI_ADDR;
+ 43:!nEN6   =  DBIN   &  SMEMR  & !A0     & !XTRQ   & !HI_ADDR 
+ 44:        #  DBIN   &  SMEMR  &  A0     & !XTRQ   & !HI_ADDR 
+ 45:        #  DBIN   &  SMEMR  &  A0     &  XTRQ   & !HI_ADDR;
+ 46:!nEN5   =  DBIN   &  SMEMR  & !A0     &  XTRQ   & !HI_ADDR;
+ 47:!nEN4   =  DBIN   &  SMEMR  & !XTRQ   & !HI_ADDR;
+ 48:!nEN3   = !SOUT   & !sWO    & !XTRQ   &  HCLK   & !HI_ADDR;
+ 49:!nEN2   = !SOUT   & !sWO    &  A0     &  XTRQ   &  HCLK   & !HI_ADDR;
+ 50: MEMCS  = !SMEMR  & !SOUT   & !sWO    & !HI_ADDR 
+ 51:        #  SMEMR  & !SOUT   & !sWO    & !HI_ADDR 
+ 52:        #  SMEMR  &  SOUT   & !sWO    & !HI_ADDR 
+ 53:        #  SMEMR  & !SOUT   &  sWO    & !HI_ADDR 
+
+LISTING FOR LOGIC DESCRIPTION FILE: PAL_U61.pld                      Page 2
+
+CUPL(WM): Universal Compiler for Programmable Logic
+Version 5.0a Serial# 60008009
+Copyright (c) 1983, 1998 Logical Devices, Inc.
+Created Fri Apr 07 15:06:36 2023
+
+ 54:        #  SMEMR  &  SOUT   &  sWO    & !HI_ADDR;
+ 55:
+ 56:/* End */
+ 57:
+ 58:
+ 59:
+
+
+
+Jedec Fuse Checksum       (369d)
+Jedec Transmit Checksum   (d3bd)

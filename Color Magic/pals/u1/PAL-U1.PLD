@@ -1,0 +1,78 @@
+Name     LomasCM-U1 ;
+PartNo   00 ;
+Date     5/8/2023 ;
+Revision 01 ;
+Designer Engineer ;
+Company  BBR Computing ;
+Assembly None ;
+Location  ;
+Device   g16v8as ;
+
+/* Dedicated input pins */
+
+pin 1   = CHG_DOTS;     /* Input */
+pin 2   = nCURSOR_DLY;  /* Input */
+pin 3   = ENABLE_BLINK; /* Input */
+pin 4   = AT7;          /* Input */
+pin 5   = BLINK;        /* Input */
+pin 6   = CURSOR_BLINK; /* Input */
+pin 7   = GA12;         /* Input */
+pin 8   = GA13;         /* Input */
+pin 9   = RA0;          /* Input */
+pin 11  = RA1;          /* Input */
+
+/* Programmable output pins */
+
+pin 12  = ALPHA_DOTS;   /* Combinatorial output */
+pin 13  = DA13;         /* Combinatorial output */
+pin 14  = DA12;         /* Fixed high output */
+pin 15  = P15;           /* Fixed high output */
+pin 16  = GRPH;         /* Fixed high output */
+pin 17  = PORTC2;       /* Fixed high output */
+pin 18  = PORTC3;       /* Fixed high output */
+pin 19  = NC1;          /* Combinatorial output */
+
+/* Output equations */
+
+!NC1        = !GA13       & !RA1        & !P15
+            # !GA13       &  RA1        & !P15
+            # !GA13       & !RA1        &  P15
+            #  GA13       & !RA1        &  P15;
+ PORTC3     = 'b'1;
+ PORTC2     = 'b'1;
+ GRPH       = 'b'1;
+ NC         = 'b'1;
+ DA12       = 'b'1;
+!DA13       = !GA12       & !RA0        & !P15
+            # !GA12       &  RA0        & !P15
+            # !GA12       & !RA0        &  P15
+            #  GA12       & !RA0        &  P15;
+ ALPHA_DOTS = !CHG_DOTS   &  nCURSOR_DLY & !ENABLE_BLINK & !AT7        & !BLINK      & !CURSOR_BLINK 
+            # !CHG_DOTS   &  nCURSOR_DLY &  ENABLE_BLINK & !AT7        & !BLINK      & !CURSOR_BLINK 
+            # !CHG_DOTS   &  nCURSOR_DLY & !ENABLE_BLINK &  AT7        & !BLINK      & !CURSOR_BLINK 
+            # !CHG_DOTS   &  nCURSOR_DLY &  ENABLE_BLINK &  AT7        & !BLINK      & !CURSOR_BLINK 
+            #  CHG_DOTS   &  nCURSOR_DLY &  ENABLE_BLINK &  AT7        & !BLINK      & !CURSOR_BLINK 
+            # !CHG_DOTS   &  nCURSOR_DLY & !ENABLE_BLINK & !AT7        &  BLINK      & !CURSOR_BLINK 
+            # !CHG_DOTS   &  nCURSOR_DLY &  ENABLE_BLINK & !AT7        &  BLINK      & !CURSOR_BLINK 
+            # !CHG_DOTS   &  nCURSOR_DLY & !ENABLE_BLINK &  AT7        &  BLINK      & !CURSOR_BLINK 
+            # !CHG_DOTS   &  nCURSOR_DLY &  ENABLE_BLINK &  AT7        &  BLINK      & !CURSOR_BLINK 
+            # !CHG_DOTS   & !nCURSOR_DLY & !ENABLE_BLINK & !AT7        & !BLINK      &  CURSOR_BLINK 
+            # !CHG_DOTS   &  nCURSOR_DLY & !ENABLE_BLINK & !AT7        & !BLINK      &  CURSOR_BLINK 
+            # !CHG_DOTS   & !nCURSOR_DLY &  ENABLE_BLINK & !AT7        & !BLINK      &  CURSOR_BLINK 
+            # !CHG_DOTS   &  nCURSOR_DLY &  ENABLE_BLINK & !AT7        & !BLINK      &  CURSOR_BLINK 
+            # !CHG_DOTS   & !nCURSOR_DLY & !ENABLE_BLINK &  AT7        & !BLINK      &  CURSOR_BLINK 
+            # !CHG_DOTS   &  nCURSOR_DLY & !ENABLE_BLINK &  AT7        & !BLINK      &  CURSOR_BLINK 
+            # !CHG_DOTS   & !nCURSOR_DLY &  ENABLE_BLINK &  AT7        & !BLINK      &  CURSOR_BLINK 
+            # !CHG_DOTS   &  nCURSOR_DLY &  ENABLE_BLINK &  AT7        & !BLINK      &  CURSOR_BLINK 
+            #  CHG_DOTS   &  nCURSOR_DLY &  ENABLE_BLINK &  AT7        & !BLINK      &  CURSOR_BLINK 
+            # !CHG_DOTS   & !nCURSOR_DLY & !ENABLE_BLINK & !AT7        &  BLINK      &  CURSOR_BLINK 
+            # !CHG_DOTS   &  nCURSOR_DLY & !ENABLE_BLINK & !AT7        &  BLINK      &  CURSOR_BLINK 
+            # !CHG_DOTS   & !nCURSOR_DLY &  ENABLE_BLINK & !AT7        &  BLINK      &  CURSOR_BLINK 
+            # !CHG_DOTS   &  nCURSOR_DLY &  ENABLE_BLINK & !AT7        &  BLINK      &  CURSOR_BLINK 
+            # !CHG_DOTS   & !nCURSOR_DLY & !ENABLE_BLINK &  AT7        &  BLINK      &  CURSOR_BLINK 
+            # !CHG_DOTS   &  nCURSOR_DLY & !ENABLE_BLINK &  AT7        &  BLINK      &  CURSOR_BLINK 
+            # !CHG_DOTS   & !nCURSOR_DLY &  ENABLE_BLINK &  AT7        &  BLINK      &  CURSOR_BLINK 
+            # !CHG_DOTS   &  nCURSOR_DLY &  ENABLE_BLINK &  AT7        &  BLINK      &  CURSOR_BLINK;
+
+/* End */
+

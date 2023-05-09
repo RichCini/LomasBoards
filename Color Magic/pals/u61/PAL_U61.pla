@@ -1,0 +1,38 @@
+# Berkeley PLA format generated using
+#
+# CUPL(WM)        5.0a Serial# 60008009
+# Device          g16v8as  Library DLIB-h-40-2
+# Created         Fri Apr 07 15:06:37 2023
+# Name            LomasCM
+# Partno          PAL_U61
+# Revision        01
+# Date            04-07-2023
+# Designer        
+# Company         
+# Assembly        
+# Location        
+#
+# Inputs  A0 A14 DBIN HCLK 
+#         HI_ADDR MEMCS SMEMR SOUT 
+#         XTRQ nEN2 nEN3 nEN4 
+#         nEN5 nEN6 nEVNWR nODDWR 
+#         nWR sWO 
+# Outputs MEMCS !nEN2 !nEN3 !nEN4 
+#         !nEN5 !nEN6 !nEVNWR !nODDWR 
+.i 18
+.o 8
+.p 13
+----0--0---------0 1~~~~~~~
+----0-11---------- 1~~~~~~~
+----0-10---------1 1~~~~~~~
+1--10--01--------0 ~1~~~~~~
+---10--00--------0 ~~1~~~~~
+--1-0-1-0--------- ~~~1~~~~
+0-1-0-1-1--------- ~~~~1~~~
+--1-0-1-0--------- ~~~~~1~~
+1-1-0-1-1--------- ~~~~~1~~
+---10--00-------00 ~~~~~~1~
+0--10--01-------00 ~~~~~~1~
+---10--00-------00 ~~~~~~~1
+1--10--01-------00 ~~~~~~~1
+.end

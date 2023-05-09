@@ -1,0 +1,55 @@
+%SIGNAL
+PIN   6 =  A0 
+PIN   9 =  A14 
+PIN   2 =  DBIN 
+PIN   8 =  HCLK 
+PIN  11 =  HI_ADDR 
+PIN  12 =  MEMCS 
+PIN   3 =  SMEMR 
+PIN   4 =  SOUT 
+PIN   7 =  XTRQ 
+PIN  13 =  nEN2 
+PIN  14 =  nEN3 
+PIN  15 =  nEN4 
+PIN  16 =  nEN5 
+PIN  17 =  nEN6 
+PIN  19 =  nEVNWR 
+PIN  18 =  nODDWR 
+PIN   1 =  nWR 
+PIN   5 =  sWO 
+%END
+
+%FIELD
+%END
+
+%EQUATION
+MEMCS =>
+    !HI_ADDR & !SOUT & !sWO
+  # !HI_ADDR & SMEMR & SOUT
+  # !HI_ADDR & SMEMR & !SOUT & sWO
+
+!nEN2 =>
+    A0 & HCLK & !HI_ADDR & !SOUT & XTRQ & !sWO
+
+!nEN3 =>
+    HCLK & !HI_ADDR & !SOUT & !XTRQ & !sWO
+
+!nEN4 =>
+    DBIN & !HI_ADDR & SMEMR & !XTRQ
+
+!nEN5 =>
+    !A0 & DBIN & !HI_ADDR & SMEMR & XTRQ
+
+!nEN6 =>
+    DBIN & !HI_ADDR & SMEMR & !XTRQ
+  # A0 & DBIN & !HI_ADDR & SMEMR & XTRQ
+
+!nEVNWR =>
+    HCLK & !HI_ADDR & !SOUT & !XTRQ & !nWR & !sWO
+  # !A0 & HCLK & !HI_ADDR & !SOUT & XTRQ & !nWR & !sWO
+
+!nODDWR =>
+    HCLK & !HI_ADDR & !SOUT & !XTRQ & !nWR & !sWO
+  # A0 & HCLK & !HI_ADDR & !SOUT & XTRQ & !nWR & !sWO
+
+%END
