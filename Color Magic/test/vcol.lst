@@ -1,0 +1,1071 @@
+Microsoft (R) Macro Assembler Version 6.14.8444		    04/29/23 11:22:47
+VCOL CGA/EGA test					     Page 1 - 1
+
+
+				TITLE VCOL CGA/EGA test
+				.LISTALL
+				.XALL
+
+				; ml /Zm /Cp /Fl /Sa vcol.asm  /Zm is "OPTION M510" Cp preserves case.
+
+				;*****************************************************************************;
+				;*                                       VCOL                                *;
+				;*------------     ----------------------------------------------------------*;
+				;*	Task	       : Makes some basic functions available for	       *;
+				;*	                access to the Color Graphics Adapter (CGA)	       *;
+				;*---------------------------------------------------------------------------*;
+				;*	Info	       : All functions subdivide the screen	              *;
+				;*	                into columns 0 to 79 and lines 0 to 24	              *;
+				;*	                in text mode and into columns 0 to 719 and            *;
+				;*	                the lines 0 to 347 in graphic mode.	              *;
+				;*	                the 40 column text mode is not supported !	       *;
+				;*	                A high resolution graphic screen should appear        *;
+				;*	                first, followed by a text screen. If the high         *;
+				;*	                res screen doesn't appear, try running the	       *;
+				;*	                program a few times in succession.	              *;
+				;*---------------------------------------------------------------------------*;
+				;*	Author	       : MICHAEL TISCHER	                                   *;
+				;*	Developed on	: 8/13/87	                                          *;
+				;*	Last update	: 6/16/89	                                          *;
+				;*---------------------------------------------------------------------------*;
+				;*	assembly	: MASM VCOL (program will assemble with one	       *;
+				;*	                           warning - it WILL link & run)	       *;
+				;*	               LINK VCOL;	                                          *;
+				;*---------------------------------------------------------------------------*;
+				;*	Call	       : VCOL	                                                 *;
+				;*****************************************************************************;
+
+				;== Constants ===============================================================
+ = 03D8				CONTROL_REG   = 03D8h	       ;Control register port address
+ = 03D9				CCHOICE_REG   = 03D9h	       ;Color select register port address
+ = 03D4				ADDRESS_6845  = 03D4h	       ;6845 address register
+ = 03D5				DATA_6845     = 03D5h	       ;6845 data register
+ = 8800				VIO_SEG	= 08800h	       ;Video RAM segment address
+ = 000A				CUR_START	= 10	              ;Reg IP for CRTC: Cursor start line
+ = 000B				CUR_END	= 11	              ;Reg f for CTRC: Cursor end line
+ = 000C				CURPG_HI	= 12	              ;Page address (high byte)
+ = 000D				CURPG_LO	= 13	              ;Page address (low byte)
+ = 000E				CURPOS_HI	= 14	              ;Reg f for CRTC: Cursor pos high byte
+ = 000F				CURPOS_LO	= 15	              ;Reg # for CRTC: Cursor pos low byte
+ = 4E20				DELAY	       = 20000	       ;Counter for delay loop
+
+				;== Macros ==================================================================
+
+				;-- SETMODE : Macro for configuring screen control register ----------------- 
+
+				setmode       macro modus
+
+				       mov    dx,CONTROL_REG       ;Address of the display control register
+				       mov    al,modus             ;New mode into the AL register
+				       out    dx,al                ;Send mode to control register
+
+				       endm
+
+
+				;-- WAITRET: waits until display is completed -------------------------------
+				waitret       macro
+				local	wr1	                     ;Local label
+
+				       mov    dx,3DAh	       ;Address of the display status register
+				wr1:	in     al,dx	              ;Get content
+				       test   al,8                 ;Vertical retrace?
+				       je     wr1                  ;NO --> WAIT
+
+				       endm
+
+				;== Stack ===================================================================
+ 0000				stack  segment para stack          ;Definition of stack segment
+ 0000  0100 [			       dw 256 dup(?)               ;256-word stack
+        0000
+       ]
+
+ 0200				stack  ends                        ;End of stack segment
+
+				;== Data ====================================================================
+
+ 0000				data	segment para 'DATA'	       ;Definition of data segment
+
+				;== Data required for demo program ======
+ 0000 0D 0A			initm	db 13,10
+ 0002  56 43 4F 4C 20 28	       db "VCOL (c) 1988,1989 by Michael Tischer "
+       63 29 20 31 39 38
+       38 2C 31 39 38 39
+       20 62 79 20 4D 69
+       63 68 61 65 6C 20
+       54 69 73 63 68 65
+       72 20
+ 0028  0D 0A 0D 0A		       db 13,10,13,10
+ 002C  54 68 69 73 20 64	       db "This demo program only runs with a Color/Graphics",13,10 
+       65 6D 6F 20 70 72
+       6F 67 72 61 6D 20
+       6F 6E 6C 79 20 72
+       75 6E 73 20 77 69
+       74 68 20 61 20 43
+       6F 6C 6F 72 2F 47
+       72 61 70 68 69 63
+       73 0D 0A
+ 005F  41 64 61 70 74 65	       db "Adapter ( CGA ). If your PC uses another type of",13,10 
+       72 20 28 20 43 47
+       41 20 29 2E 20 49
+       66 20 79 6F 75 72
+       20 50 43 20 75 73
+       65 73 20 61 6E 6F
+       74 68 65 72 20 74
+       79 70 65 20 6F 66
+       0D 0A
+ 0091  76 69 64 65 6F 20	       db "video card press the <s> key to stop the program.",13,10 
+       63 61 72 64 20 70
+       72 65 73 73 20 74
+       68 65 20 3C 73 3E
+       20 6B 65 79 20 74
+       6F 20 73 74 6F 70
+       20 74 68 65 20 70
+       72 6F 67 72 61 6D
+       2E 0D 0A
+ 00C4  50 72 65 73 73 20	       db "Press any other key to start the program...",13,10,"$"
+       61 6E 79 20 6F 74
+       68 65 72 20 6B 65
+       79 20 74 6F 20 73
+       74 61 72 74 20 74
+       68 65 20 70 72 6F
+       67 72 61 6D 2E 2E
+       2E 0D 0A 24
+
+ 00F2 01 00			str1	db 1,0
+
+				;== Table of offset addresses of line beginnings ============================
+ 00F4 0000 00A0 0140		lines	dw 0*160, 1*160, 2*160             ;start addresses of the lines as
+ 00FA  01E0 0280 0320		       dw 3*160, 4*160, 5*160             ;offset addresses in the video RAM 
+ 0100  03C0 0460 0500		       dw 6*160, 7*160, 8*160
+ 0106  05A0 0640 06E0		       dw 9*160,10*160,11*160,12*160,13*160,14*160,15*160,16*160 
+       0780 0820 08C0
+       0960 0A00
+ 0116  0AA0 0B40 0BE0		       dw 17*160,18*160,19*160,20*160,21*160,22*160,23*160,24*160
+       0C80 0D20 0DC0
+       0E60 0F00
+
+ 0126 38 28 2D 0A 7F 06		graphict db 38h, 28h, 2Dh, 0Ah, 7Fh, 06h    ;register values for the 
+ 012C  64 70 02 01 06 07	         db 64h, 70h, 02h, 01h, 06h, 07h    ;graphic-modes
+ 0132 71 50 5A 0A 1F 06		textt	  db 71h, 50h, 5Ah, 0Ah, 1Fh, 06h    ;register-values for the
+ 0138  19 1C 02 07 06 07	         db 19h, 1Ch, 02h, 07h, 06h, 07h    ;graphic-modes
+
+ 013E 00			dwait	db 0	                            ;TRUE (<>0) when caller uses the
+				                                          ;/F switch
+ 013F				data	ends	                            ;End of data segment
+
+				;== Code ====================================================================
+
+ 0000				code	segment para 'CODE'                ;Definition of the CODE. segment
+
+				       assume cs:code, ds:data, es:data, ss:stack
+
+				;== This is only the Demo-Program ===========================================
+
+ 0000				demo	proc far
+
+				       ;-- Look for /F from DOS prompt 	
+
+ 0000  8A 0E 0080		       mov    cl,ds:128            ;Get number of bytes from prompt 
+ 0004  0A C9			       or     cl,cl                ;No parameters given?
+ 0006  74 15			       je     switch1              ;NO --> Ignore
+ 0008  BB 0081			       mov    bx,129               ;BX points to first byte in prompt
+ 000B  8A EF			       mov    ch,bh                ;Set loop high byte to 0
+
+ 000D				switch:
+ 000D  81 3F 462F		       cmp    word ptr [bx],'F/'   ;Switch in this position 462f
+ 0011  74 0A			       je     switch1              ;YES --> Switch found
+ 0013  81 3F 662F		       cmp    word ptr [bx],'f/'   ;Switch in this position? 662f
+ 0017  74 04			       je     switch1              ;YES --> Switch found 
+ 0019  FE C3			       inc    bl                   ;Set BX to next character 
+ 001B  E2 F0			       loop   switch               ;Check next character
+
+ 001D				switch1: 
+ 001D  B8 ---- R		       mov    ax,data              ;Get segment addr. of data segment
+ 0020  8E D8			       mov    ds,ax                ;and load into DS
+ 0022  8E C0			       mov    es,ax                ;and ES
+
+ 0024  88 0E 013E R		       mov    dwait,cl	       ;Set WAIT flag
+
+				       ;-- Display snit message and wait for input ------------------
+
+ 0028  B4 09			       mov    ah,9                 ;Function number for string display 
+ 002A  BA 0000 R		       mov    dx,offset initm      ;Address of intial message
+ 002D  CD 21			       int    21h                  ;Call DOS interrupt 21H
+
+ 002F  32 E4			       xor    ah,ah	              ;Function number: get key
+ 0031  CD 16			       int    16h	              ;Call BIOS keyboard interrupt
+ 0033  3C 73			       cmp    al,'s'        	;<s> key pressed?
+ 0035  74 04			       je     endit	              ;YES --> End program
+ 0037  3C 53			       cmp    al,'S'	              ;<S> key pressed?
+ 0039  75 05			       jne    startdemo	       ;NO --> Start demo
+
+ 003B  B8 4C00			endit:	mov    ax,4C00h	       ;Function number: End program
+ 003E  CD 21			       int    21h	              ;Call DOS interrupt 21H
+
+ 0040				startdemo label near 
+ 0040  E8 009A			       call   grafhi               ;switch on 320*200 pixel graphic 
+ 0043  32 C0			       xor    al,al 
+ 0045  E8 029B			       call   cgr                  ;Clear graphic display
+
+ 0048  33 DB			       xor    bx,bx	              ;Column 0
+ 004A  33 D2			       xor    dx,dx	              ;Line 0
+ 004C  B8 00C7			       mov    ax,199	              ;Pixels-vertical
+ 004F  B9 027F			       mov    cx,639	              ;Pixels-horizontal
+ 0052  51			gr1:	push   cx	              ;Record horizontal pixels
+ 0053  8B C8			       mov    cx,ax	              ;Vertical pixels to counter
+ 0055  50			       push   ax	              ;Record vertical pixels on the stack
+ 0056  B0 01			       mov    al,1
+ 0058  E8 02B2			gr2:   call   pixhi	              ;Set pixel
+ 005B  42			       inc    dx	              ;Increment line
+ 005C  E2 FA			       loop   gr2	              ;Draw line
+ 005E  58			       pop    ax	              ;Get vertical pixels from the stack
+ 005F  83 E8 03			       sub    ax,3	              ;Next line 3 pixels less
+ 0062  59			       pop    cx	              ;Get horizontal pixels from the stack
+ 0063  51			       push   cx	              ;Record horizontal pixels
+ 0064  50			       push   ax	              ;Record vertical pixels on the stack
+ 0065  B0 01			       mov    al,1
+ 0067  E8 02A3			gr3:   call   pixhi	              ;Set pixel
+ 006A  43			       Inc    bx	              ;Increment column
+ 006B  E2 FA			       loop   gr3	              ;Draw line
+ 006D  58			       pop    ax	              ;Get vertical pixels from stack
+ 006E  59			       pop    cx	              ;Get horizontal pixels from stack
+ 006F  83 E9 06			       sub    cx,6	              ;Next line 6 pixels less
+ 0072  51			       push   cx	              ;Record horizontal pixels
+ 0073  8B C8			       mov    cx,ax	              ;Vertical pixels to counter
+ 0075  50			       push   ax	              ;Record vertical pixels on the stack
+ 0076  B0 01			       mov    al,1
+ 0078  E8 0292			gr4:   call   pixhi	              ;Set pixel
+ 007B  4A			       dec    dx	              ;Decrement line
+ 007C  E2 FA			       loop   gr4	              ;Draw line
+ 007E  58			       pop    ax	              ;Get vertical pixels from stack
+ 007F  83 E8 03			       sub    ax,3	              ;Next line 3 pixels less
+ 0082  59			       pop    cx	              ;Get horizontal pixels from stack
+ 0083  51			       push   cx	              ;Record horizontal pixels
+ 0084  50			       push   ax	              ;Record vertical pixels on the stack
+ 0085  B0 01			       mov    al,1
+ 0087  E8 0283			gr5:   call   pixhi	              ;Set pixel
+
+ 008A  4B			       dec    bx                   ;Increment column
+ 008B  E2 FA			       loop   gr5                  ;Draw line
+ 008D  58			       pop    ax                   ;Get vertical pixels from the stack 
+ 008E  59			       pop    cx                   ;Get horizontal pixels from the stack
+ 008F  83 E9 06			       sub    cx,6                 ;Next line 6 pixels less
+ 0092  83 F8 05			       cmp    ax,5                 ;Is the vertical line longer than 5
+ 0095  77 BB			       ja     gr1                  ;YES - -> continue
+
+ 0097  32 E4			       xor    ah,ah                ;Wait for function number of key wait 
+ 0099  CD 16			       int    16h                  ;Call BIOS keyboard interrupt
+				       
+ 009B  E8 0038			       call   text	              ;Switch on 80x25 character text mode
+ 009E  33 ED			       xor    bp,bp	              ;Process screen page 0 first
+ 00A0  B0 30			demo1:	mov    al,30h	              ;ASCII code "0"
+ 00A2  0B C5			       or     ax,bp	              ;Convert page number to ASCII
+ 00A4  A2 00F2 R		       mov    str1,al	       ;Store in string
+ 00A7  E8 005D			       call   setcol	              ;Set color
+ 00AA  E8 006C			       call   setpage	       ;Activate screen page in BP
+ 00AD  E8 018D			       call   cls	              ;Clear screen page
+ 00B0  33 DB			       xor    bx,bx	              ;Begin in the upper left
+ 00B2  E8 0213			       call   calo	              ;Screen corner with output
+ 00B5  B9 07D0			       mov    cx,2000	       ;A page contains 2,000 characters
+ 00B8  32 E4			       xor    ah,ah	              ;Start with color code 0
+ 00BA  BE 00F2 R		       mov    si,offset str1	;Offset address of string 1
+ 00BD  FE C4			demo2:	inc    ah	              ;Increment color value
+ 00BF  E8 01D6			       call   print	              ;Output string 1
+ 00C2  E2 F9			       loop   demo2	              ;Repeat until screen is full
+
+ 00C4  32 E4			       xor    ah,ah                ;Wait for key
+ 00C6  CD 16			       int    16h                  ;Call BIOS-Keyboard-Interrupt
+ 00C8  45			       inc    bp                   ;Increment page number
+ 00C9  83 FD 04			       cmp    bp,4                 ;A11 4 pages processed ? 
+ 00CC  75 D2			       jne    demo1                ;NO --> then next page
+
+ 00CE  33 ED			       xor    bp,bp                ;Activate page 0 again
+ 00D0  E8 0046			       call   setpage 
+ 00D3  E9 FF65			       jmp    endit
+ 00D6				demo	endp                        ;Goto program end
+
+				;== The actual functions follow  ===========================
+				       
+				;-- TEXT: switches the text display on ---------------------------------------
+				;-- Input	: none
+				;-- Output    : none
+				;-- Register  : AX, SI, BH, DX and FLAGS are changed
+
+ 00D6				text	proc near
+
+ 00D6  BE 0132 R		       mov    si,offset textt      ;Offset address of the register-table
+ 00D9  B3 21			       mov    bl,00100001b         ;80x25 text mode,blinking
+ 00DB  EB 09			       jmp    short vcprog         ;Program video controller again
+
+ 00DD				text	endp
+
+				;-- GRAFHI: switches the 640*200 pixel graphic mode on -----------------------
+				;-- Input	: none
+				;-- Output    : none
+				;-- Register  : AX, SI, BH, DX and FLAGS are changed
+
+ 00DD				grafhi	proc near
+
+ 00DD  B3 12			       mov    bl,00010010b	       ;Graphic mode with 640*200 pixels
+ 00DF  EB 02			       jmp    short gfx1           ;Program video controller again
+
+ 00E1				grafhi	endp
+
+				;-- GRAFLO: switches the 320*200 pixel graphic mode on -----------------------
+				;-- Input	: none
+				;-- Output    : none
+				;-- Register  : AX, SI, BH, DX and FLAGS are changed
+
+ 00E1				graflo	proc near
+
+ 00E1  B3 22			       mov    bl,00100010b	       ;Graphic mode with 320*200 pixels
+ 00E3				gfx1::  
+ 00E3  BE 0126 R		       mov    si,offset graphict   ;Offset address of the register table
+
+ 00E6				graflo	endp
+
+				;-- VCPROG: programs the video controller ------------------------------------
+				;-- Input	: SI - Address of a register table
+				;--             BL - Value for display control register 
+				;-- Output    : none
+				;-- Register  : AX, SI, BH, DX and FLAGS are changed
+
+ 00E6				vcprog	proc near
+
+				       setmode bl	              ;Bit 3 - 0: screen off
+			     1	
+ 00E6  BA 03D8		     1	       mov    dx,CONTROL_REG       ;Address of the display control register
+ 00E9  8A C3		     1	       mov    al,bl             ;New mode into the AL register
+ 00EB  EE		     1	       out    dx,al                ;Send mode to control register
+			     1	
+
+ 00EC  B9 000C			       mov    cx,12	              ;12 registers are set
+ 00EF  32 FF			       xor    bh,bh	              ;Start with register 0
+ 00F1  AC			vcp1:	lodsb	                     ;Get register value from table
+ 00F2  8A E0			       mov    ah,al	              ;Register value to AH
+ 00F4  8A C7			       mov    al,bh	              ;Number of the register to AL
+ 00F6  E8 0040			       call   setvk	              ;Transmit value to controller
+ 00F9  FE C7			       inc    bh	              ;Address next register
+ 00FB  E2 F4			       loop   vcp1	              ;Set additional registers
+
+ 00FD  80 CB 08			       or     bl,8	              ;Bit 3 = 1: screen on
+				       setmode bl	              ;Set new mode
+			     1	
+ 0100  BA 03D8		     1	       mov    dx,CONTROL_REG       ;Address of the display control register
+ 0103  8A C3		     1	       mov    al,bl             ;New mode into the AL register
+ 0105  EE		     1	       out    dx,al                ;Send mode to control register
+			     1	
+ 0106  C3			       ret	                     ;Back to caller
+ 0107				vcprog	endp
+
+				;-- SETCOL    : Sets the color of the display frame and Background -----------
+				;-- Input	: AL = color value
+				;-- Output    : none
+				;-- register  : AX and DX are changed
+				;-- Info	: in text mode the lowest 4 bits indicate the frame color
+				;--	         in graphic mode the lowest 4 bits indicate the frame
+				;--	         and background color, bit 5 selects the color palette
+
+ 0107				setcol	proc near
+
+ 0107  BA 03D9			       mov    dx,CCHOICE_REG	;Address of the color selection register
+ 010A  EE			       out    dx,al	              ;Output color value
+ 010B  C3			       ret                         ;Back to caller
+
+ 010C				setcol	endp
+
+				;-- CDEF	: sets the start and end line of the cursor --------------------
+				;-- Input     : CL - start line
+				;--	         CH = end line
+				;-- Output    : none
+				;-- register  : AX and DX are changed
+
+ 010C				cdef	proc near
+
+ 010C  B0 0A			       mov    al,CUR_START         ;Register 10: start line
+ 010E  8A E1			       mov    ah,cl                ;Start line to AH
+ 0110  E8 0026			       call   setvk                ;Transmit to video controller
+ 0113  B0 0B			       mov    al,CUR_END           ;Register 11: end line
+ 0115  8A E5			       mov    ah,ch                ;End line to AH
+ 0117  EB 20			       jmp    short setvk          ;Transmit to video controller
+
+ 0119				cdef	endp
+				       
+				;-- SETPAGE   : sets the screen page -----------------------------------------
+				;-- Input	: BP - Number of the screen page (0 to 3)
+				;-- Output    : none
+				;-- register  : BX, AX, CX and DX are changed
+				;-- Info      : in the Graphic modes the first screen page has the 
+				;--             number 0, the second the number 2
+
+ 0119				setpage proc near
+ 0119  8B DD			       mov    bx,bp                ;Screen page to BX 
+ 011B  B1 05			       mov    cl,5                 ;Multiply by 2,048
+ 011D  D3 CB			       ror    bx,cl
+ 011F  B0 0C			       mov    al,CURPG_HI          ;Register 12: Hi byte page address
+ 0121  8A E7			       mov    ah,bh                ;Hi byte of the screen page to AH
+ 0123  E8 0013			       call   setvk                ;Transmit to video controller
+ 0126  B0 0D			       mov    al,CURPG_LO          ;Register 13: Lo byte page address
+ 0128  8A E3			       mov    ah,bl                ;Lo byte of the screen page to AH
+ 012A  EB 0D			       jmp    short setvk          ;Transmit to video controller
+
+ 012C				setpage	endp
+
+				;-- SETBLINK  : sets the blinking cursor -------------------------------------
+				;-- Input	: DI = Offset address of the cursor
+				;-- Output    : none
+				;-- register  : BX, AX and DX are changed
+
+ 012C				setblink proc near
+ 012C  8B DF			       mov    bx,di                ;Move offset to BX
+ 012E  B0 0E			       mov    al,CURPOS_HI         ;Hi byte of the cursor offset 
+ 0130  8A E7			       mov    ah,bh                ;HI byte of the offset
+ 0132  E8 0004			       call   setvk                ;Transmit to video controller
+ 0135  B0 0F			       mov    al,CURPOS_LO         ;Lo byte of the cursor offset 
+ 0137  8A E3			       mov    ah,bl                ;Lo byte of the offset
+				       
+				       ;-- SETVK is called automatically -------------------------------------
+
+ 0139				setblink endp
+
+				;-- SETVK	: sets a byte in one register of the video controller ----
+				;-- Input	: AL = Number of the register
+				;--	         AH = new content of the register 
+				;-- Output    : none
+				;-- register  : DX and AL are changed
+
+ 0139				setvk	proc near
+
+ 0139  BA 03D4			       mov    dx,ADDRESS_6845	;Address of the index register
+ 013C  EE			       out    dx,al	              ;Send number of the register
+ 013D  EB 00			       jmp    short $+2	       ;Short I/O pause
+ 013F  42			       inc    dx	              ;Address of the index register
+ 0140  8A C4			       mov    al,ah	              ;Content to AL
+ 0142  EE			       out    dx,al	              ;Set new content
+ 0143  C3			       ret	                     ;Back to caller
+
+ 0144				setvk	endp
+
+				;-- GETVK	: gets a byte from one register of the video controller --------
+				;-- Input	: AL = Number of the register
+				;-- Output    : AL = Contents of register 
+				;-- register  : DX and AL are changed
+
+ 0144				getvk	proc near
+
+ 0144  BA 03D4			       mov    dx,ADDRESS_6845	;Address of the index register
+ 0147  EE			       out    dx,al	              ;Send number of the register
+ 0148  42			       inc    dx	              ;Index register address
+ 0149  EB 00			       jmp    short $+2	       ;Short io pause
+ 014B  EC			       in     al,dx	              ;Set new contents
+ 014C  C3			       ret	                     ;Back to caller
+
+ 014D				getvk	endp
+
+				;-- SCROLLUP  : scrolls a window N lines upward ------------------------------
+				;-- Input	: BL = line upper left
+				;--	         BH - column upper left
+				;--	         DL - line below right
+				;--	         DH - column below right
+				;--	         CL - Number of lines, to be scrolled
+				;--	       : BP - Number of the screen page (0 to 3) 
+				;-- Output    : none
+				;-- register  : only FLAGS are changed
+				;-- Info	: the display lines liberated are cleared
+
+ 014D				scrollup proc near
+
+ 014D  FC			       cld	                     ;On string commands count up
+
+ 014E  50			       push   ax                   ;All changed registers to the
+ 014F  53			       push   bx                   ;Secure stack
+ 0150  57			       push   di                   ;In this case the sequence
+ 0151  56			       push   si                   ;must be observed
+				 
+ 0152  53			       push   bx                   ;These three registers are returned 
+ 0153  51			       push   cx                   ;before the end of the routine
+ 0154  52			       push   dx                   ;From the stack
+ 0155  2A D3			       sub    dl,bl                ;Calculate the number of lines
+ 0157  FE C2			       inc    dl
+ 0159  2A D1			       sub    dl,cl                ;Subtract number of lines to be scrolled 
+ 015B  2A FE			       sub    bh,dh                ;Calculate number of columns
+ 015D  FE C6			       inc    dh
+ 015F  E8 0166			       call   calo                 ;Convert upper left in offset
+ 0162  8B F7			       mov    si,di                ;Record address in SI
+ 0164  02 D9			       add    bl,cl                ;First line in scrolled window
+ 0166  E8 015F			       call   calo                 ;Convert first line in offset
+ 0169  87 F7			       xchg   si,di                ;Exchange SI and DI
+				 
+ 016B  80 3E 013E R 00		       cmp    dwait,0               ;Flicker suppressed?
+ 0170  74 0E			       je     sup0                 ;NO --> SUPO
+				 
+				       waitret                     ;YES -->Wait for retrace
+			     1	local	wr1	                     ;Local label
+			     1	
+ 0172  BA 03DA		     1	       mov    dx,3DAh	       ;Address of the display status register
+ 0175  EC		     1	??0000:	in     al,dx	              ;Get content
+ 0176  A8 08		     1	       test   al,8                 ;Vertical retrace?
+ 0178  74 FB		     1	       je     ??0000                  ;NO --> WAIT
+			     1	
+				       setmode 00100101b           ;Disable screen
+			     1	
+ 017A  BA 03D8		     1	       mov    dx,CONTROL_REG       ;Address of the display control register
+ 017D  B0 25		     1	       mov    al,00100101b             ;New mode into the AL register
+ 017F  EE		     1	       out    dx,al                ;Send mode to control register
+			     1	
+
+ 0180  1E			sup0:	push   ds                   ;Store segment register
+ 0181  06			       push   es                   ;Oncthe stack
+ 0182  B8 8800			       mov    ax,VIO_SEG           ;Segment address of the video RAM 
+ 0185  8E D8			       mov    ds,ax                ;To DS
+ 0187  8E C0			       mov    es,ax                ;And ES
+
+ 0189  8B C7			sup1:	mov    ax,di                ;Record DI in AX 
+ 018B  8B DE			       mov    bx,si                ;Record SI in BX 
+ 018D  8A CE			       mov    cl,dh                ;Number of columns in counter
+ 018F  F3/ A5			       rep    movsw                ;Move a line
+ 0191  8B F8			       mov    di,ax                ;Restore DI from AX
+ 0193  8B F3			       mov    si,bx                ;Restore SI from BX 
+ 0195  81 C7 00A0		       add    di,160               ;Set next line
+ 0199  81 C6 00A0		       add    si,160 
+ 019D  FE CA			       dec    dl                   ;processed all lines ? 
+ 019F  75 E8			       jne    sup1                 ;NO --> move another line
+
+ 01A1  07			       pop    es                   ;Get segment register from
+ 01A2  1F			       pop    ds                   ;Stack
+
+ 01A3  80 3E 013E R 00		       cmp    dwait,0              ;Flickering suppressed? 
+ 01A8  74 06			       je     sup2                 ;NO --> SUP2
+				       
+				       setmode 00101101b	       ;YES --> Enable screen
+			     1	
+ 01AA  BA 03D8		     1	       mov    dx,CONTROL_REG       ;Address of the display control register
+ 01AD  B0 2D		     1	       mov    al,00101101b             ;New mode into the AL register
+ 01AF  EE		     1	       out    dx,al                ;Send mode to control register
+			     1	
+
+ 01B0				sup2:
+ 01B0  5A			       pop    dx                   ;Get lower right corner back 
+ 01B1  59			       pop    cx                   ;Return number of lines
+ 01B2  5B			       pop    bx                   ;Return upper left corner
+ 01B3  8A DA			       mov    bl,dl                ;Lower line to BL
+ 01B5  2A D9			       sub    bl,cl                ;Subtract number of lines
+ 01B7  FE C3			       inc    bl
+				       
+ 01B9  B4 07			       mov    ah,07h               ;Color : black on white 
+ 01BB  E8 0086			       call   clear                ;Clear lines
+
+ 01BE  5E			       pop    si                   ;CX and DX have already been 
+ 01BF  5F			       pop    di                   ;Restored
+ 01C0  5B			       pop    bx 
+ 01C1  58			       pop    ax
+
+ 01C2  C3			       ret	                     ;Back to caller
+
+ 01C3				scrollup endp
+
+				;-- SCROLLDN: scrolls a window N lines down ----------------------------------	
+				;-- Input	: BL - line upper left
+				;--	         BH column upper left
+				;--	         DL - line below right
+				;--	         DH = column below right
+				;--	         CL - number of lines to be scrolled
+				;--	       : BP number of the screen page (0 to 3) 
+				;-- Output    : none
+				;-- register  : only FLAGS are changed
+				;-- Info	: the display lines liberated are cleared
+
+ 01C3				scrolldn proc near
+
+ 01C3  FC			       cld	                     ;On string commands count up
+ 01C4  50			       push   ax                   ;Record all changed registers 
+ 01C5  53			       push   bx                   ;On the stack
+ 01C6  57			       push   di                   ;In this case the sequence
+ 01C7  56			       push   si                   ;Must be observed
+
+ 01C8  53			       push   bx                   ;These three registers are returned
+ 01C9  51			       push   cx                   ;From the stack before the end
+ 01CA  52			       push   dx                   ;Of the routine
+
+ 01CB  2A F7			       sub    dh,bh                ;Calculate the number of columns
+ 01CD  FE C6			       inc    dh
+ 01CF  8A C3			       mov    al,bl                ;Record line upper left in AL
+ 01D1  8A DA			       mov    bl,dl                ;Line below right to line below left 
+ 01D3  E8 00F2			       call   calo                 ;Convert upper left in offset 
+ 01D6  8B F7			       mov    si,di                ;Record address in SI
+ 01D8  2A D9			       sub    bl,cl;               Subtract number of characters to scroll 
+ 01DA  E8 00EB			       call   calo                 ;Convert upper left in offset
+ 01DD  87 F7			       xchg   si,di                ;Exchange SI and DI
+ 01DF  2A D0			       sub    dl,al                ;Calculate number of lines
+ 01E1  FE C2			       inc    dl
+ 01E3  2A D1			       sub    dl,cl                ;Subtract number of lines to be scrolled
+
+ 01E5  80 3E 013E R 00		       cmp    dwait,0               ;Flicker suppressed? 
+ 01EA  74 0E			       je     sdn0                 ;NO --> SDN0
+
+				       waitret                     ;YES --> Wait for retrace 
+			     1	local	wr1	                     ;Local label
+			     1	
+ 01EC  BA 03DA		     1	       mov    dx,3DAh	       ;Address of the display status register
+ 01EF  EC		     1	??0001:	in     al,dx	              ;Get content
+ 01F0  A8 08		     1	       test   al,8                 ;Vertical retrace?
+ 01F2  74 FB		     1	       je     ??0001                  ;NO --> WAIT
+			     1	
+				       setmode 00100101b           ;Disable screen
+			     1	
+ 01F4  BA 03D8		     1	       mov    dx,CONTROL_REG       ;Address of the display control register
+ 01F7  B0 25		     1	       mov    al,00100101b             ;New mode into the AL register
+ 01F9  EE		     1	       out    dx,al                ;Send mode to control register
+			     1	
+
+ 01FA  1E			sdn0:	push   ds	              ;Store segment register on the
+ 01FB  06			       push   es	              ;Stack
+ 01FC  B8 8800			       mov    ax,VIO_SEG	       ;Segment address of the video RAM
+ 01FF  8E D8			       mov    ds,ax	              ;To DS
+ 0201  8E C0			       mov    es,ax	              ;and ES
+
+ 0203  8B C7			sdn1:	mov    ax,di                ;Record DI in AX
+ 0205  8B DE			       mov    bx,si                ;Record SI in BX
+ 0207  8A CE			       mov    cl,dh                ;Number of columns in counter
+ 0209  F3/ A5			       rep    movsw                ;Move a line
+ 020B  8B F8			       mov    di,ax                ;Restore DI from AX
+ 020D  8B F3			       mov    si,bx                ;Restore SI from BX
+ 020F  81 EF 00A0		       sub    di,160               ;set into next line
+ 0213  81 EE 00A0		       sub    si,160 
+ 0217  FE CA			       dec    dl                   ;processed all lines ?
+
+ 0219  75 E8			       jne    sdn1	              ;NO --> move another line
+
+ 021B  07			       pop    es                   ;Return segment register from
+ 021C  1F			       pop    ds                   ;Stack
+
+ 021D  80 3E 013E R 00		       cmp    dwait,0               ;Flicker suppressed?
+ 0222  74 06			       je     sdn2                 ;NO --> SDN2
+
+				       setmode 00101101b	       ;YES --> Enable screen
+			     1	
+ 0224  BA 03D8		     1	       mov    dx,CONTROL_REG       ;Address of the display control register
+ 0227  B0 2D		     1	       mov    al,00101101b             ;New mode into the AL register
+ 0229  EE		     1	       out    dx,al                ;Send mode to control register
+			     1	
+
+
+ 022A  5A			sdn2:	pop    dx                   ;Get lower right corner
+ 022B  59			       pop    cx                   ;Return number of lines 
+ 022C  5B			       pop    bx                   ;Return upper left corner
+ 022D  8A D3			       mov    dl,bl                ;upper line to DL
+ 022F  02 D1			       add    dl,cl                ;Add number of lines
+ 0231  FE CA			       dec    dl
+ 0233  B4 07			       mov    ah,07h               ;Color : black on white
+ 0235  E8 000C			       call   clear                ;Erase liberated lines
+
+ 0238  5E			       pop    si                   ;CX and DX have already been
+ 0239  5F			       pop    di                   ;Returned
+ 023A  5B			       pop    bx 
+ 023B  58			       pop    ax
+
+ 023C  C3			       ret	                     ;Back to caller
+
+ 023D				scrolldn endp
+
+				;-- CLS: Clear the screen completely ----------------------------------------- 	
+				;-- Input : BP = number of the screen page (0 or 1) 
+				;-- Output : none
+				;-- register : only FLAGS are changed
+
+ 023D				cls	proc near
+ 023D  B4 07			       mov    ah,07h               ;Color is white on black
+ 023F  33 DB			       xor    bx,bx                ;upper left is (0/0)
+ 0241  BA 4F18			       mov    dx,4F18h             ;Lower right is (79/24)
+
+				              ;-- Execute Clear ----------------------------------------------
+
+ 0244				cls	endp
+				        
+				;-- CLEAR: fills a designated display area with space characters -------------
+				;-- Input	: AH = attribute/color
+				;--	         BL = line upper left
+				;--	         BH = column upper left
+				;--	         DL - line below right
+				;--	         DH = column below right
+				;--	         BP = number of the screen page (0 to 3)
+				;-- Output    : none
+				;-- register  : only FLAGS are changed
+
+ 0244				clear	proc near
+
+ 0244  FC			       cld	                     ;On string commands count up
+ 0245  51			       push   cx	              ;Store all register which are
+ 0246  52			       push   dx	              ;Changed on the stack
+ 0247  56			       push   si 
+ 0248  57			       push   di 
+ 0249  06			       push   es 
+ 024A  2A D3			       sub    dl,bl                ;Calculate number of lines
+ 024C  FE C2			       inc    dl
+ 024E  2A F7			       sub    dh,bh	              ;Calculate number of columns
+ 0250  FE C6			       inc    dh
+ 0252  E8 0073			       call   calo	              ;Offset address of the upper left corner
+ 0255  B9 8800			       mov    cx,VIO_SEG	       ;Segment address of the video RAM
+ 0258  8E C1			       mov    es,cx	              ;To ES
+ 025A  32 ED			       xor    ch,ch	              ;Hi bytes of the counter to 0
+ 025C  B0 20			       mov    al," "               ;Space character
+
+ 025E  80 3E 013E R 00		       cmp    dwait,0               ;Flickering suppressed?
+ 0263  74 10			       je     clear1               ;NO --> CLEAR1
+				       
+ 0265  52			       push   dx                   ;Store DX on the stack 
+				       waitret                     ;Retrace wait
+			     1	local	wr1	                     ;Local label
+			     1	
+ 0266  BA 03DA		     1	       mov    dx,3DAh	       ;Address of the display status register
+ 0269  EC		     1	??0002:	in     al,dx	              ;Get content
+ 026A  A8 08		     1	       test   al,8                 ;Vertical retrace?
+ 026C  74 FB		     1	       je     ??0002                  ;NO --> WAIT
+			     1	
+				       setmode 00100101b           ;Switch screen off
+			     1	
+ 026E  BA 03D8		     1	       mov    dx,CONTROL_REG       ;Address of the display control register
+ 0271  B0 25		     1	       mov    al,00100101b             ;New mode into the AL register
+ 0273  EE		     1	       out    dx,al                ;Send mode to control register
+			     1	
+ 0274  5A			       pop    dx                   ;Return DX from the stack
+
+ 0275				clear1:	
+ 0275  8B F7			       mov    si,di                ;Record DI in SI
+ 0277  8A CE			       mov    cl,dh                ;Number columns in counter
+ 0279  F3/ AB			       rep    stosw                ;Store space character
+ 027B  8B FE			       mov    di,si                ;Return DI from SI
+ 027D  81 C7 00A0		       add    di,160               ;Set in next line
+ 0281  FE CA			       dec    dl                   ;All lines processed ?
+ 0283  75 F0			       jne    clear1               ;NO --> erase another line
+
+ 0285  80 3E 013E R 00		       cmp    dwait,0               ;Flicker suppressed?
+ 028A  74 06			       je     clear2               ;NO --> CLEAR2
+				       
+				       setmode 00101101b           ;Enable screen
+			     1	
+ 028C  BA 03D8		     1	       mov    dx,CONTROL_REG       ;Address of the display control register
+ 028F  B0 2D		     1	       mov    al,00101101b             ;New mode into the AL register
+ 0291  EE		     1	       out    dx,al                ;Send mode to control register
+			     1	
+
+ 0292				clear2: 
+ 0292  07			       pop    es                   ;Get registers from
+ 0293  5F			       pop    di                   ;Stack again
+ 0294  5E			       pop    si 
+ 0295  5A			       pop    dx 
+ 0296  59			       pop    cx
+ 0297  C3			       ret                         ;Back to caller
+				 
+ 0298				clear	endp
+
+				;-- PRINT: outputs a string on the screen ------------------------------------	
+				;-- Input     : AH a attribute/color
+				;--	         DI - offset address of the first character
+				;--             SI - offset address of the strings to DS
+				;--	         BP = number of the screen page (0 to 3)
+				;-- Output    : DI points behind the last character output 
+				;-- register  : AL, DI and FLAGS are changed
+				;-- Info	: the string must be terminated by a NUL-character.
+				;--             other control characters are not recognized
+
+ 0298				print	proc near
+
+ 0298  FC			       cld	                     ;On string commands count up
+ 0299  56			       push   si	              ;Store SI, DX and ES on the stack
+ 029A  06			       push   es 
+ 029B  51			       push   cx 
+ 029C  52			       push   dx
+ 029D  BA 8800			       mov    dx,VIO_SEG	       ;Segment address of the video RAM
+ 02A0  8A 0E 013E R		       mov    cl,dwait	       ;Get WAIT flag
+ 02A4  8E C2			       mov    es,dx	              ;First to DX and then to ES
+
+ 02A6  EB 16			       jmp    short print3	       ;Get character and display it
+
+ 02A8				print1	label near
+
+ 02A8  0A C9			       or     cl,cl                ;Flicker suppressed?
+ 02AA  74 11			       je     print2               ;NO --> PRINT2
+
+ 02AC  50			       push   ax                   ;Record characters and color
+ 02AD  BA 03DA			       mov    dx,3DAh              ;Address of the display-status-register
+ 02B0  EC			hr1:   in     al,dx                ;Get content
+ 02B1  A8 01			       test   al,1                 ;Horizontal retrace?
+ 02B3  75 FB			       jne    hr1                  ;NO --> wait
+ 02B5  FA			       cli                         ;permit no further interrupts
+ 02B6  EC			 hr2:  in     al,dx                ;Get content
+ 02B7  A8 01			       test   al,1                 ;Horizontal retrace?
+ 02B9  74 FB			       je     hr2                  ;YES --> wait
+ 02BB  58			       pop    ax                   ;Restore characters and color
+ 02BC  FB			       sti	                     ;Do not suppress Interrupts any more
+
+ 02BD				print2: 
+ 02BD  AB			       stosw	                     ;Store attribute and color in V-RAM
+ 02BE				print3: 
+ 02BE  AC			       lodsb	                     ;Get next character from the string
+ 02BF  0A C0			       or     al,al	              ;Is it NUL
+ 02C1  75 E5			       jne    print1	              ;NO --> output
+
+ 02C3				printe: 
+ 02C3  5A			       pop    dx	              ;Get SI, DX, CX and ES from stack
+ 02C4  59			       pop    cx 
+ 02C5  07			       pop    es 
+ 02C6  5E			       pop    si 
+ 02C7  C3			       ret                         ;Back to caller
+
+ 02C8				print	endp
+
+				;-- CALO: Converts line and column into offset address -----------------------
+				;-- Input     : BL = line
+				;               BH - column
+				;--	         BP = number of the screen page (0 to 3)
+				;-- Output	: DI = the offset address
+				;-- register  : DI and FLAGS are changed
+ 02C8				calo	proc near
+
+ 02C8  50			       push   ax                   ;Secure AX on the stack
+ 02C9  53			       push   bx                   ;Secure BX on the stack
+
+ 02CA  D1 E3			       shl    bx,1	              ;Column and line times 2
+ 02CC  8A C7			       mov    al,bh	              ;Column to AL
+ 02CE  32 FF			       xor    bh,bh	              ;Hi byte
+ 02D0  8B BF 00F4 R		       mov    di,[lines+bx]	       ;Get offset address of the line
+ 02D4  32 E4			       xor    ah,ah	              ;HI byte for column offset
+ 02D6  03 F8			       add    di,ax	              ;Add line and column offset
+ 02D8  8B DD			       mov    bx,bp	              ;Screen page to BX
+ 02DA  B1 04			       mov    cl,4	              ;Multiply by 4,096
+ 02DC  D3 CB			       ror    bx,cl
+ 02DE  03 FB			       add    di,bx	              ;Add beginning of screen page to offset
+ 02E0  5B			       pop    bx	              ;Restore BX from stack
+ 02E1  58			       pop    ax	              ;Restore AX from stack
+ 02E2  C3			       ret	                     ;Back to caller
+
+ 02E3				calo	endp
+
+				;-- CGR: Erase the complete Graphic display ----------------------------------
+				;-- Input     : AL = 00H : erase all pixels
+				;--                  FFH : set all pixels
+				;-- Output	: none
+				;-- register  : AH, BX, CX, DI and FLAGS are changed
+				;-- Info	: this Function erases the Graphic display in both
+				;--	         Graphic modes
+
+ 02E3				cgr	proc near
+
+ 02E3  06			       push   es	              ;Store ES on the stack
+ 02E4  98			       cbw	                     ;Expand AL to AH
+ 02E5  33 FF			       xor    di,di	              ;Offset address in video RAM
+ 02E7  BB 8800			       mov    bx,VIO_SEG	       ;Segment address screen page
+ 02EA  8E C3			       mov    es,bx	              ;Segment address into segment register
+ 02EC  B9 2000			       mov    cx,2000h	       ;One page is 8KB words
+ 02EF  F3/ AB			       rep    stosw	              ;Fill page
+ 02F1  07			       pop    es	              ;Return ES from stack
+ 02F2  C3			       ret	                     ;Back to caller
+
+ 02F3				cgr	endp
+
+				;-- PIXLO: sets a pixel in the 320*200 pixel graphic mode --------------------
+				;-- Input     : BP - number of the screen page (0 or 1)
+				;--	         BX = column (0 to 319)
+				;--	         DX = line (0 to 199)
+				;--	         AL = color of the pixels (0 to 3)
+				;-- Output    : none
+				;-- register  : AX, DI and FLAGS are changed
+
+ 02F3				pixlo	proc near
+
+ 02F3  50			       push   ax                   ;Secure AX on the stack
+ 02F4  53			       push   bx                   ;Note BX on the stack
+ 02F5  51			       push   cx                   ;Store CX on the stack
+ 02F6  B1 07			       mov    cl,7 
+ 02F8  8A E3			       mov    ah,bl                ;Transmit column to AH
+ 02FA  80 E4 03			       and    ah,11b               ;Column mod 4
+ 02FD  D0 E4			       shl    ah,1                 ;Column * 2
+ 02FF  2A CC			       sub    cl,ah                ;7 - 2 * (column mod 4) 
+ 0301  B4 0B			       mov    ah,11                ;Bit value
+ 0303  D3 E0			       shl    ax,cl                ;Move to pixel position
+ 0305  F6 D4			       not    ah                   ;Reverse AH
+ 0307  D1 EB			       shr    bx,1                 ;Divide BX by 4 by shifting
+ 0309  D1 EB			       shr    bx,1                 ;Right twice
+ 030B  EB 16			       jmp    short spix           ;Set pixel
+ 030D				pixlo	endp 
+
+				;-- PIXHI: sets a pixel in the 640*200 pixel graphic mode --------------------
+				;-- Input  :  BP = number of the screen page (0 or 1)
+				;--	       BX = column (0 to 639)
+				;--	       DX = line (0 to 199)
+				;--	       AL = color of the pixels (0 or 1)
+				;-- Output   : none
+				;-- register : AX, DI and FLAGS are changed
+
+ 030D				pixhi	proc near
+
+ 030D  50			       push   ax                   ;Store AX on the stack 
+ 030E  53			       push   bx                   ;Note BX on the stack 
+ 030F  51			       push   cx                   ;Note CX on the stack
+ 0310  B1 07			       mov    cl,7 
+ 0312  8A E3			       mov    ah,bl                ;Transmit column to AH
+ 0314  80 E4 07			       and    ah,111b              ;Column mod 8
+ 0317  2A CC			       sub    cl,ah                ;7 - column mod 8
+ 0319  B4 01			       mov    ah,1                 ;Bit value
+ 031B  D3 E0			       shl    ax,cl                ;Move pixel position
+ 031D  F6 D4			       not    ah                   ;Reverse AH
+ 031F  B1 03			       mov    cl,3                 ;3 shifts
+ 0321  D3 EB			       shr    bx, cl               ;Divide BX by 8
+
+				       ;-- set pixel ---------------------------------------------------------
+
+ 0323				pixhi	endp
+
+				;-- SPIX: sets a pixel in the graphic display --------------------------------
+				;-- Input	: BX = column offset
+				;--	         DX = line (0 to 199)
+				;--	         AH = Value to cancel old Bits
+				;--	         AL - new Bit value
+				;-- Output    : none
+				;-- register  : AX, DI and FLAGS are changed
+
+ 0323				spix	proc near
+
+ 0323  06			       push   es                   ;Secure ES on the stack 
+ 0324  52			       push   dx                   ;Secure DX on the stack
+ 0325  50			       push   ax                   ;Secure AX on the stack
+
+ 0326  33 FF			       xor    di,di                ;Offset address in video RAM
+ 0328  B9 8800			       mov    cx,VIO_SEG           ;Segment address screen page
+ 032B  8E C1			       mov    es,cx                ;Segment address into segment register
+ 032D  8B C2			       mov    ax,dx                ;Move line to AX
+ 032F  D1 E8			       shr    ax,1                 ;Divide line by 2
+ 0331  B1 50			       mov    cl,80                ;The factor is 90
+ 0333  F6 E1			       mul    cl                   ;Multiply line by 80
+ 0335  83 E2 01			       and    dx,1	              ;Line mod 2
+ 0338  B1 03			       mov    cl,3	              ;3 shifts
+ 033A  D3 CA			       ror    dx,cl	              ;Rotate right (* 2000H)
+ 033C  8B F8			       mov    di,ax	              ;80 * int(line/2)
+ 033E  03 FA			       add    di,dx	              ;+ 2000H * (line mod 4)
+ 0340  03 FB			       add    di,bx	              ;Add column offset
+ 0342  58			       pop    ax	              ;Return AX from stack
+ 0343  26: 8A 1D		       mov    bl,es:[di]	       ;Get pixel
+ 0346  22 DC			       and    bl,ah	              ;Erase Bits
+ 0348  0A D8			       or     bl,al	              ;Add pixel
+ 034A  26: 88 1D		       mov    es:[di],bl	       ;write pixel back
+
+ 034D  5A			       pop    dx	              ;Return DX from stack
+ 034E  07			       pop    es	              ;Return ES from stack
+ 034F  59			       pop    cx	              ;Return CX from stack
+ 0350  5B			       pop    bx	              ;Return BX from stack
+ 0351  58			       pop    ax	              ;Return AX from stack
+
+ 0352  C3			       ret	                     ;Back to caller
+
+ 0353				spix	endp
+
+				;== end ======================================================================
+
+ 0353				code   ends                        ;End of the code segment
+				       end demo
+Microsoft (R) Macro Assembler Version 6.14.8444		    04/29/23 11:22:47
+VCOL CGA/EGA test					     Symbols 2 - 1
+
+
+
+
+Macros:
+
+                N a m e                 Type
+
+setmode  . . . . . . . . . . . .	Proc
+waitret  . . . . . . . . . . . .	Proc
+
+
+Segments and Groups:
+
+                N a m e                 Size     Length   Align   Combine Class
+
+code . . . . . . . . . . . . . .	16 Bit	 0353	  Para	  Private 'CODE'	
+data . . . . . . . . . . . . . .	16 Bit	 013F	  Para	  Private 'DATA'	
+stack  . . . . . . . . . . . . .	16 Bit	 0200	  Para	  Stack	  
+
+
+Procedures,  parameters and locals:
+
+                N a m e                 Type     Value    Attr
+
+calo . . . . . . . . . . . . . .	P Near	 02C8	  code	Length= 001B Private
+cdef . . . . . . . . . . . . . .	P Near	 010C	  code	Length= 000D Private
+cgr  . . . . . . . . . . . . . .	P Near	 02E3	  code	Length= 0010 Private
+clear  . . . . . . . . . . . . .	P Near	 0244	  code	Length= 0054 Private
+cls  . . . . . . . . . . . . . .	P Near	 023D	  code	Length= 0007 Private
+demo . . . . . . . . . . . . . .	P Far	 0000	  code	Length= 00D6 Private
+getvk  . . . . . . . . . . . . .	P Near	 0144	  code	Length= 0009 Private
+grafhi . . . . . . . . . . . . .	P Near	 00DD	  code	Length= 0004 Private
+graflo . . . . . . . . . . . . .	P Near	 00E1	  code	Length= 0005 Private
+pixhi  . . . . . . . . . . . . .	P Near	 030D	  code	Length= 0016 Private
+pixlo  . . . . . . . . . . . . .	P Near	 02F3	  code	Length= 001A Private
+print  . . . . . . . . . . . . .	P Near	 0298	  code	Length= 0030 Private
+scrolldn . . . . . . . . . . . .	P Near	 01C3	  code	Length= 007A Private
+scrollup . . . . . . . . . . . .	P Near	 014D	  code	Length= 0076 Private
+setblink . . . . . . . . . . . .	P Near	 012C	  code	Length= 000D Private
+setcol . . . . . . . . . . . . .	P Near	 0107	  code	Length= 0005 Private
+setpage  . . . . . . . . . . . .	P Near	 0119	  code	Length= 0013 Private
+setvk  . . . . . . . . . . . . .	P Near	 0139	  code	Length= 000B Private
+spix . . . . . . . . . . . . . .	P Near	 0323	  code	Length= 0030 Private
+text . . . . . . . . . . . . . .	P Near	 00D6	  code	Length= 0007 Private
+vcprog . . . . . . . . . . . . .	P Near	 00E6	  code	Length= 0021 Private
+
+
+Symbols:
+
+                N a m e                 Type     Value    Attr
+
+??0000 . . . . . . . . . . . . .	L Near	 0175	  code	
+??0001 . . . . . . . . . . . . .	L Near	 01EF	  code	
+??0002 . . . . . . . . . . . . .	L Near	 0269	  code	
+ADDRESS_6845 . . . . . . . . . .	Number	 03D4h	 
+CCHOICE_REG  . . . . . . . . . .	Number	 03D9h	 
+CONTROL_REG  . . . . . . . . . .	Number	 03D8h	 
+CURPG_HI . . . . . . . . . . . .	Number	 000Ch	 
+CURPG_LO . . . . . . . . . . . .	Number	 000Dh	 
+CURPOS_HI  . . . . . . . . . . .	Number	 000Eh	 
+CURPOS_LO  . . . . . . . . . . .	Number	 000Fh	 
+CUR_END  . . . . . . . . . . . .	Number	 000Bh	 
+CUR_START  . . . . . . . . . . .	Number	 000Ah	 
+DATA_6845  . . . . . . . . . . .	Number	 03D5h	 
+DELAY  . . . . . . . . . . . . .	Number	 4E20h	 
+VIO_SEG  . . . . . . . . . . . .	Number	 8800h	 
+clear1 . . . . . . . . . . . . .	L Near	 0275	  code	
+clear2 . . . . . . . . . . . . .	L Near	 0292	  code	
+demo1  . . . . . . . . . . . . .	L Near	 00A0	  code	
+demo2  . . . . . . . . . . . . .	L Near	 00BD	  code	
+dwait  . . . . . . . . . . . . .	Byte	 013E	  data	
+endit  . . . . . . . . . . . . .	L Near	 003B	  code	
+gfx1 . . . . . . . . . . . . . .	L Near	 00E3	  code	
+gr1  . . . . . . . . . . . . . .	L Near	 0052	  code	
+gr2  . . . . . . . . . . . . . .	L Near	 0058	  code	
+gr3  . . . . . . . . . . . . . .	L Near	 0067	  code	
+gr4  . . . . . . . . . . . . . .	L Near	 0078	  code	
+gr5  . . . . . . . . . . . . . .	L Near	 0087	  code	
+graphict . . . . . . . . . . . .	Byte	 0126	  data	
+hr1  . . . . . . . . . . . . . .	L Near	 02B0	  code	
+hr2  . . . . . . . . . . . . . .	L Near	 02B6	  code	
+initm  . . . . . . . . . . . . .	Byte	 0000	  data	
+lines  . . . . . . . . . . . . .	Word	 00F4	  data	
+print1 . . . . . . . . . . . . .	L Near	 02A8	  code	
+print2 . . . . . . . . . . . . .	L Near	 02BD	  code	
+print3 . . . . . . . . . . . . .	L Near	 02BE	  code	
+printe . . . . . . . . . . . . .	L Near	 02C3	  code	
+sdn0 . . . . . . . . . . . . . .	L Near	 01FA	  code	
+sdn1 . . . . . . . . . . . . . .	L Near	 0203	  code	
+sdn2 . . . . . . . . . . . . . .	L Near	 022A	  code	
+startdemo  . . . . . . . . . . .	L Near	 0040	  code	
+str1 . . . . . . . . . . . . . .	Byte	 00F2	  data	
+sup0 . . . . . . . . . . . . . .	L Near	 0180	  code	
+sup1 . . . . . . . . . . . . . .	L Near	 0189	  code	
+sup2 . . . . . . . . . . . . . .	L Near	 01B0	  code	
+switch1  . . . . . . . . . . . .	L Near	 001D	  code	
+switch . . . . . . . . . . . . .	L Near	 000D	  code	
+textt  . . . . . . . . . . . . .	Byte	 0132	  data	
+vcp1 . . . . . . . . . . . . . .	L Near	 00F1	  code	
+
+	   0 Warnings
+	   0 Errors
