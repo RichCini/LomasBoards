@@ -2,21 +2,21 @@
 The basis of reading the PALs is a project called DuPAL (https://github.com/DuPAL-PAL-DUmper)
 which has several associated Java-based tools to read the PAL, analyze the results,
 and do equation reductions. The instructions aren't as fulsome as they could be, 
-so here are some notes to hopefully make it easier. Also helpful is the site
+so here are some notes to hopefully make it easier for others. Also helpful is the site
 https://proghq.org/wiki/index.php/DuPAL which runs through compiling some of the Java
 code.
 
 ## DuPAL board
-Largely no issues getting the board manufactured. Rather than taking the existing gerbers,
+Largely no issues getting the board manufactured. Rather than using the existing gerbers,
 I loaded the design into KiCAD and tweaked a few components and placements to fit my
 liking. I moved the overlapped bypass capacitors and changed the foortprints for the
-DE9M, power switch, and the coaxial power jack.
+DE9M, power switch, and the coaxial power jack to match parts I already had in-stock.
 
 ## DuPAL Firmware
 The Atmel ATMega328 can be programmed in-circuit using the ISP header (for loading
-the Optiboot bootloader) or out-of-circuit using any other number of methods.
-I use a USBtiny programmer from Adafruit. First, download Optiboot, compile it,
-and the program it into the ATMega:
+the Optiboot bootloader) or out-of-circuit using any number of methods. I used a
+USBtinyISP programmer from Adafruit attached to the ISP header. First, download Optiboot, 
+compile it, and the program it into the ATMega:
 
   make atmega328 AVR_FREQ=20000000L LED_START_FLASHES=8 BAUD_RATE=57600
 
