@@ -1,0 +1,68 @@
+//
+// LDP Color Magic U16, equations from reverse engineering, assuming no I/Os (only I or O) and no registers
+//	Peter A. Ruetz 1/11/2024
+//	Input file for palwiz.exe
+//
+// vectors chip type: 12
+//    This chip was problem due to the large number of inputs (15) and vector table size (92K)
+//    Rather than rewrite code to avoid these issues, I ran the pattern generation/analysis in two batches
+//	1: Pin 15 considered an output (always H).  On the board this pin is always H except at reset.
+//	2: Pin 17 considered an output (always H)
+//	The only difference found was in SEL_BLUE which was corrected and seemed to provide proper operation
+//	Its possible that Pins 15 and 17 are both used in SEL_BLUE equations and this approach will fail
+//
+chip 22V10; 	// Programmed Lattice GAL22V10D on TL-866 Programmer
+
+//
+// This chip is mostly related to clocking in various color/BW modes
+//
+pin 1 Q7;		// In 13  Clock phase 7
+pin 2 Q1;		// In 12  Clock phase 1
+pin 3 Q5;		// In 11  Clock phase 5
+pin 4 Q3;		// In 10  Clock phase 3
+pin 5 ALPHA_DOTS;	// In 9
+pin 6 !DISPEN_DLY;	// In 8
+pin 7 C1;		// In 7   Color Mode 1?
+pin 8 C0;		// In 6   Color Mode 0?
+pin 9 HDGRAPHIC;	// In 5
+pin 10 HRES;		// In 4
+pin 11 GRPH;		// In 3
+pin 13 !HCLK;		// In 2
+pin 14 !LATCH;		// Out 7   depends on: 10 4 0  010 0   10x 0  111 0
+pin 15 COLOR_SEL;	// Out 6 H (really input, but too many inputs)
+pin 16 BW;		// In 1  BW Mode?  (always Low on board during tests)
+pin 17 Q6;		// In 0  Clock phase 6
+pin 18 !SEL_BLUE;      	// Out 5 H depends on: 6 1    01 0     (6 1 0 C0, COLOR_SEL, BW: 00x 0 011 0 100 0)
+pin 19 !CCLK;      	// Out 4  depends on: 12 4 2   x10 0   10x 0
+pin 20 !MUXB;    	// Out 3  depends on: 8 3    00 0
+pin 21 !MUXA;    	// Out 2  depends on: 9 8 7 6 5 3  000xx0 0  x00101 0 001x0x 0  001x10 0 101x01 0
+pin 22 !S_L;    	// Out 1  depends on: 13 11 4 0  x011 0   x110 0  100x 0
+pin 23 D3IN;    	// Out 0  depends on: 13 11     01 1  10 1
+
+D3IN =   !Q7 & Q5 | Q7 & !Q5;
+S_L =   !Q5 & HRES &  Q6 |  Q5 & HRES & !Q6  |  Q7 &  !Q5  !HRES;     // Q7, Q5, HRES, Q6
+
+MUXA =    !ALPHA_DOTS  & DISPEN_DLY & !C1 &                   !GRPH     	// ALPHA_DOTS, DISPEN_DLYn, C1, C0, HDGRAPHIC, GRPH
+	|                DISPEN_DLY & !C1 & C0 & !HDGRAPHIC &  GRPH
+	| !ALPHA_DOTS  & DISPEN_DLY &  C1 &      !HDGRAPHIC
+	| !ALPHA_DOTS  & DISPEN_DLY &  C1 &       HDGRAPHIC & !GRPH
+	|  ALPHA_DOTS  & DISPEN_DLY &  C1 &      !HDGRAPHIC &  GRPH;
+
+MUXB =  DISPEN_DLY &  !GRPH ;
+CCLK =  HRES & HCLK  |  Q1 & !HRES;    // Q1,  HRES, HCLKn
+SEL_BLUE = !C0 & !COLOR_SEL | C0 & COLOR_SEL & BW |  C0 & !COLOR_SEL & !BW;   	// Pin 17 H, Pin 15 input (Run 2)
+LATCH = !Q3 & HRES & !Q6  | Q3 & !HRES | Q3 & HRES & Q6 ;
+
+//SEL_BLUE = !C0 & BW;      							// Pin 15 H, Pin 17 input  (Run 1)
+
+COLOR_SEL.oe=0;		// this is input
+BW.oe=0;
+Q6.oe=0;
+
+LATCH.oe=1;
+D3IN.oe=1;
+S_L.oe=1;
+MUXA.oe=1;
+MUXB.oe=1;
+CCLK.oe=1;
+SEL_BLUE.oe=1;
