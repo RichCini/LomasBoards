@@ -1,0 +1,53 @@
+//
+// LDP Color Magic U1, equations from reverse engineering, assuming no I/Os (only I or O) and no registers
+//	Peter A. Ruetz 1/11/2024
+//	Input file for palwiz.exe
+//
+
+// vectors chip type 14
+
+chip 16V8C; 	// 16V8 in complex mode (I/Os) Programmed Lattice  on TL-866 Programmer
+
+
+pin 1 CHG_DOTS; 	// In 12
+pin 2 CURSOR_DEL;	// In 11
+pin 3 ENABLE_BCLK;	// In 10
+pin 4 A17;		// In 9
+pin 5 BLINK;		// In 8
+pin 6 CURSOR_BLINK;	// In 7
+pin 7 GA12;		// In 6
+pin 8 GA13;		// In 5
+pin 9 RA0;		// In 4
+pin 11 RA1;		// In 3
+pin 12 ALPHA_DOT;	// Out 4
+pin 13 DA12;		// Out 3
+pin 14 NC2;		// Out 2  <- floating in circuit
+pin 15 GRPH;		// In 2
+pin 16 PORTC2;		// In 1  <- 8255 Port C2. Not used in existing PAL (always L in circuit)
+pin 17 PORTC3;          // In 0  <- 8255 Port C3. Not used in existing PAL (always L in circuit)
+pin 18 NC1;       	// Out 1  <- floating in circuit
+pin 19 DA13;    	// Out 0
+
+
+ALPHA_DOT =  !CHG_DOTS & !CURSOR_DEL & CURSOR_BLINK
+	|    !CHG_DOTS &  CURSOR_DEL
+	|     CHG_DOTS &  CURSOR_DEL & ENABLE_BCLK & A17 & !BLINK;
+
+DA12 =!GA12 & RA0 & GRPH | GA12 & !RA0 & !GRPH | GA12 & RA0 ;
+DA13 =!GA13 & RA1 & GRPH | GA13 & !RA1 & !GRPH | GA13 & RA1 ;
+
+NC2 = ;
+NC1 = ;
+//PORTC3 = 0;    // PC Port C is normally input of machine setup, this was probably something for future enhancements
+//PORTC2 = 0;  	// PC Port C is normally input of machine setup, this was probably something for future enhancements
+
+ALPHA_DOT.oe=1;
+GRPH.oe=0;
+DA12.oe=1;
+DA13.oe=1;
+NC1.oe=0;
+NC2.oe=0;
+
+PORTC3.oe = 0;    // Input or Output?  Doesn't seem to matter, this was probably something for future enhancements
+PORTC2.oe = 0;    // Input or Output?  Doesn't seem to matter, this was probably something for future enhancements
+

@@ -1,0 +1,56 @@
+//
+// LDP Color Magic U18, equations from reverse engineering, assuming no I/Os (only I or O) and no registers
+//	Peter A. Ruetz 1/11/2024
+//	Input file for palwiz.exe
+//
+
+// vectors chip type 11
+
+chip 16V8C; 	// 16V8 in complex mode (I/Os) Programmed Lattice GAL16V8D on TL-866 Programmer
+
+
+pin 1 CLK14M; 		// In 12
+pin 2 CLK7KHZ;		// In 11
+pin 3 HRES;		// In 10
+pin 4 C0;		// In 9   Color Mode[0]?
+pin 5 C1;		// In 8   Color Mode[1]?
+pin 6 !VSYNC_DLY;	// In 7
+pin 7 FB1;		// In 6
+pin 8 FB2;		// In 5
+pin 9 !DISPEN_DLY;	// In 4
+pin 11 HD_GRAPHIC;	// In 3    L on board
+pin 12 DOT_CLK;		// Out 4
+pin 13 STR;		// Out 3
+pin 14 !HSYNC_DLY;	// In 2
+pin 15 NC;		// Out 2   Appears NC on board, but has equations!!! (Always L on board)
+pin 16 !sW0;		// In 1    From S-100 Bus
+pin 17 HCLK;          	// In 0
+pin 18 RAMRDn;       	// Out 1
+pin 19 BLANKn;    	// Out 0
+
+
+DOT_CLK =             CLK7KHZ & !HRES
+	|   CLK14M &             HRES;
+
+BLANKn = VSYNC_DLY & HSYNC_DLY;
+
+RAMRDn =  sW0 & HCLK;
+
+STR =     !C1 & !C0  & VSYNC_DLY &                 !DISPEN_DLY & HD_GRAPHIC & HSYNC_DLY
+	| !C1 &  C0  & VSYNC_DLY &         !FB2  & !DISPEN_DLY & HD_GRAPHIC & HSYNC_DLY
+	| C1  & !C0  & VSYNC_DLY &  !FB1 &         !DISPEN_DLY & HD_GRAPHIC & HSYNC_DLY
+	| C1  &  C0  & VSYNC_DLY &  !FB1 & !FB2  & !DISPEN_DLY & HD_GRAPHIC & HSYNC_DLY;
+
+NC=  !C1 & !C0 & VSYNC_DLY &               DISPEN_DLY & HD_GRAPHIC & HSYNC_DLY
+   | !C1 &  C0 & VSYNC_DLY & !FB2 &        DISPEN_DLY & HD_GRAPHIC & HSYNC_DLY
+   |  C1 & !C0 & VSYNC_DLY & !FB1 &        DISPEN_DLY & HD_GRAPHIC & HSYNC_DLY
+   |  C1 &  C0 & VSYNC_DLY & !FB1 & !FB2 & DISPEN_DLY & HD_GRAPHIC & HSYNC_DLY;
+
+DOT_CLK.oe=1;
+RAMRDn.oe=1;
+STR.oe=1;
+BLANKn.oe=1;
+NC.oe=1;
+HCLK.oe=0;
+sW0.oe=0;
+HSYNC_DLY.oe=0;
