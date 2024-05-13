@@ -3,6 +3,10 @@
 //	Peter A. Ruetz 1/11/2024
 //	Input file for palwiz.exe
 //
+// MEMCS looked to be wrong given data from chip.  Not sure what happened here.
+// Commented is original version (wrong)
+// Uncommented is new version (right? Not tested)
+//
 
 // vectors chip type 11
 
@@ -17,11 +21,12 @@ pin 3 sMEMR;		// In 7
 pin 4 sOUT;		// In 6
 pin 5 !sW0;		// In 5
 pin 6 A0;		// In 4
-pin 7 XTRQ;		// In 3
+pin 7 !XTRQ;		// In 3  16-bit request from bus
 pin 8 HCLK;		// In 2
 pin 9 A14;		// In 1
 pin 11 !BDSEL;		// In 0
-pin 12 !MEMCS;		// Out 7  depends on: 7 6 5 0       0000 0
+//pin 12 !MEMCS;		// Out 7  depends on: 7 6 5 0       0000 0
+pin 12 MEMCS;		// Out 7  depends on: 7 6 5 0       0000 1 1xx0 1
 pin 13 !EN2;		// Out 6  depends on: 6 5 4 3 2 0   001110 0
 pin 14 !EN3;		// Out 5  depends on: 6 5 3 2 0     00010 0
 pin 15 !EN4;		// Out 4  depends on: 8 7 3 0       1100 0
@@ -30,21 +35,23 @@ pin 17 !EN6;          	// Out 2  depends on: 8 7 4 3 0     11x00 0    11110 0
 pin 18 !ODDWR;       	// Out 1  depends on: 9 6 5 4 3 2 0  000x010 0  0001110 0
 pin 19 !EVNWR;    	// Out 0  depends on: 9 6 5 4 3 2 0  000x010 0  0000110 0
 
-EVNWR = 	WR & !sOUT & sW0 &       !XTRQ & HCLK & BDSEL
-	|  	WR & !sOUT & sW0 & !A0 &  XTRQ & HCLK & BDSEL;
+EVNWR = 	WR & !sOUT & sW0 &        XTRQ & HCLK & BDSEL    	// Write 16, both even-odd
+	|  	WR & !sOUT & sW0 & !A0 & !XTRQ & HCLK & BDSEL;    	// Write 8, even only
 
-ODDWR = 	WR & !sOUT & sW0 &       !XTRQ & HCLK & BDSEL
-	|  	WR & !sOUT & sW0 &  A0 &  XTRQ & HCLK & BDSEL;
+ODDWR = 	WR & !sOUT & sW0 &        XTRQ & HCLK & BDSEL    	// Write 16, both even-odd
+	|  	WR & !sOUT & sW0 &  A0 & !XTRQ & HCLK & BDSEL;  	// Write 8, odd only
 
-EN6 =  pDBIN & sMEMR &       !XTRQ & BDSEL
-    |  pDBIN & sMEMR &  A0 &  XTRQ & BDSEL;
+EN6 =  pDBIN & sMEMR &        XTRQ        & BDSEL         		// Read 16, both even-odd
+    |  pDBIN & sMEMR &  A0 & !XTRQ        & BDSEL;   			// Read 8, odd only
 
-EN5 =  pDBIN & sMEMR & !A0 &  XTRQ & BDSEL;
-EN4 =  pDBIN & sMEMR &       !XTRQ & BDSEL;
-EN3 =  !sOUT & sW0   &       !XTRQ & HCLK & BDSEL;
-EN2 =  !sOUT & sW0   & A0 &   XTRQ & HCLK & BDSEL;
-MEMCS= !sMEMR & !sOUT & sW0 & BDSEL;
-
+EN5 =  pDBIN & sMEMR & !A0 & !XTRQ        & BDSEL;   			// Read 8, even only (should there be Read 16??)
+EN4 =  pDBIN & sMEMR &        XTRQ        & BDSEL;      		// Read 16, both even-odd
+EN3 =  !sOUT & sW0   &        XTRQ & HCLK & BDSEL;			// Write 16, both even odd
+EN2 =  !sOUT & sW0   &  A0 & !XTRQ & HCLK & BDSEL;  			// Write 8, odd only
+// MEMCS= !sMEMR & !sOUT & sW0 & BDSEL;
+MEMCS =  !sMEMR & !sOUT & sW0 & BDSEL					// Write but not IO (mem)
+      |   sMEMR &               BDSEL;  				// Read mem
+  
 EVNWR.oe=1;
 ODDWR.oe=1;
 EN6.oe=1;
