@@ -1,4 +1,11 @@
 # Reading the PALs
+Although I'm keeling the summary below, it turned out that the PALs were not able to
+be decoded properly using the method below. It required the assistance of someone
+with more robust hardware and an intimate knowledge of PAL equation writing. He was
+able to reverse the PALs and produce working files. I plan on trying to replicate
+his setup at some point, but that's to come.
+
+## DuPAL board
 The basis of reading the PALs is a project called DuPAL (https://github.com/DuPAL-PAL-DUmper)
 which has several associated Java-based tools to read the PAL, analyze the results,
 and do equation reductions. The instructions aren't as fulsome as they could be, 
@@ -6,7 +13,6 @@ so here are some notes to hopefully make it easier for others. Also helpful is t
 https://proghq.org/wiki/index.php/DuPAL which runs through compiling some of the Java
 code.
 
-## DuPAL board
 Largely no issues getting the board manufactured. Rather than using the existing gerbers,
 I loaded the design into KiCAD and tweaked a few components and placements to fit my
 liking. I moved the overlapped bypass capacitors and changed the foortprints for the
