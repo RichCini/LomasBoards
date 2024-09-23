@@ -4499,8 +4499,8 @@
     (effects (font (size 1.27 1.27)) (justify left bottom))
     (uuid b000a1b4-9db0-40fc-99bb-0bc5ec637de9)
   )
-  (text "NOTE: Pin 4 should connect to /BW but it\nconnects nowhere on the prototype. It would\nbe odd for /S to be left floating, though."
-    (at 138.43 168.148 0)
+  (text "TP2: Pin 4 is misdrawn on the LDP schematics - \nit is shown as pin 10 and connects to /BW. The\nIBM CGA card also has it connected to /BW.\nTIE TO /BW.\n"
+    (at 141.478 172.974 0)
     (effects (font (size 1.27 1.27)) (justify left bottom))
     (uuid c819dc52-72f8-4038-b311-41cc8bcfebef)
   )

@@ -3397,8 +3397,8 @@
     )
   )
 
-  (text "NOTE: On the prototype, U64.10 is connected to \nU65.4."
-    (at 222.25 121.412 0)
+  (text "TP5: On the prototype, U64.10 is connected to \nU65.4. TIE TO VCC."
+    (at 188.214 146.05 0)
     (effects (font (size 1.27 1.27)) (justify left bottom))
     (uuid 0e2e76e8-3e65-4599-b533-74decb4d27fa)
   )
@@ -3492,7 +3492,7 @@
       (effects (font (size 1.27 1.27)) (justify left) hide)
     )
   )
-  (global_label "SPKR_GATE" (shape output) (at 67.31 208.026 0) (fields_autoplaced)
+  (global_label "SPKR_GATE" (shape input) (at 67.31 208.026 0) (fields_autoplaced)
     (effects (font (size 1.27 1.27)) (justify left))
     (uuid 1b34deb8-65ca-43ea-bcff-beec0c577cac)
     (property "Intersheet References" "${INTERSHEET_REFS}" (id 0) (at 80.0966 207.9466 0)

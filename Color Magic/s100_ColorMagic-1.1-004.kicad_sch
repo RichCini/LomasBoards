@@ -21,13 +21,13 @@
     (effects (font (size 1.27 1.27)) (justify left bottom))
     (uuid 08577c9f-307a-4866-8be8-7c49771a7b67)
   )
-  (text "NOTE 2:\n\nAfter using an automated BOM analysis and\ncomparing to the actual board, there are \nfour connections on three chips that do not\nmatch the schematic. All are drawn connecting\nto VCC. They appear to be open connections.\n\nU63.4\nU64.4 and U64.10\nU65.4\n\nU64.10 and U65.4 are connected together."
-    (at 201.93 87.884 0)
+  (text "NOTE 2:\n\nAfter using an automated BOM analysis and\ncomparing to the actual board, there are \nfour connections on three chips that do not\nmatch the schematic. All are drawn connecting\nto VCC yet they are open connections on the\nboard.\n\nU63.4\nU64.4 and U64.10\nU65.4\n\nU64.10 and U65.4 are connected together.\n\nThese are drawn with tie points to help with\nfurther analysis, which shows all of them can\nbe safely tied to Vcc."
+    (at 201.676 97.79 0)
     (effects (font (size 1.27 1.27)) (justify left bottom))
     (uuid 1d5d346e-c2d0-4aa8-9342-1a73ef1275ea)
   )
-  (text "ERRATA from 1.0 to 1.1-002:\n00. v1.0 of board was trashed.\n01. Resistor footprints are one size too small -- 1/4w uses 1/8w, etc. \n	Due to space limitations, left at 1/8w.\n02. U49/78L12 silkscreen is backwards. Corrected.\n03. Several chips have unconnected VCC or GND leads that might be from\n	the use of ONE and ZERO. Corrected.\n\nERRATA from 1.1-002 to 1.1-003\n	v.003 was never manufactured.\n\nERRATA from 1.1-003 to 1.1-004\n01. J6 (address select) is flipped. Rotated 180.\n02. Design relies on SLAVE_CLR [54] for reset, but not all boards (like\n    the SCP 200B) generate that signal. Reused spare gate of the LS125\n    and added a jumper and pull-up to generate that signal driven by\n    POC [99].\n03. Changed memory chip wiring to be similar to the original, using\n    MA13 as the CS* and grounding A13 and A14 of the 62256 (thus making\n    it a 6264 albeit with only one chip select).\n04. Discovered that A6 is connected twice on U55. Changed second to\n    A5.\n"
-    (at 18.796 149.098 0)
+  (text "ERRATA from 1.0 to 1.1-002:\n00. v1.0 of board was trashed.\n01. Resistor footprints are one size too small -- 1/4w uses 1/8w, etc. \n	Due to space limitations, left at 1/8w.\n02. U49/78L12 silkscreen is backwards. Corrected.\n03. Several chips have unconnected VCC or GND leads that might be from\n	the use of ONE and ZERO. Corrected.\n\nERRATA from 1.1-002 to 1.1-003\n	v.003 was never manufactured.\n\nERRATA from 1.1-003 to 1.1-004\n01. J6 (address select) is flipped. Rotated 180.\n02. Design relies on SLAVE_CLR [54] for reset, but not all boards (like\n    the SCP 200B) generate that signal. Reused spare gate of the LS125\n    and added a jumper and pull-up to generate that signal driven by\n    POC [99].\n03. Changed memory chip wiring to be similar to the original, using\n    MA13 as the CS* and grounding A13 and A14 of the 62256 (thus making\n    it a 6264 albeit with only one chip select).\n04. Discovered that A6 is connected twice on U55. Changed second to\n    A5.\n\nThe 1.1-004 version works."
+    (at 19.304 154.432 0)
     (effects (font (size 1.27 1.27)) (justify left bottom))
     (uuid a01a14f1-82cb-40ee-8507-e082809efec7)
   )

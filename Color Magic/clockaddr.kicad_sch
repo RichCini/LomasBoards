@@ -4605,8 +4605,8 @@
     (effects (font (size 1.27 1.27)) (justify left bottom))
     (uuid 6f9fd24e-d836-4c71-9b9b-5a9503229997)
   )
-  (text "NOTE: On the prototype U63.4 is left floating.\nIn the IBM CGA adapter, it's tied to Vcc."
-    (at 207.264 206.248 0)
+  (text "TP3: On the prototype U63.4 is left floating.\nIn the IBM CGA adapter, it's tied to Vcc.\n\nTIE TO VCC"
+    (at 208.026 211.328 0)
     (effects (font (size 1.27 1.27)) (justify left bottom))
     (uuid 82649be8-8b71-4747-ab68-9f606c6b155b)
   )
@@ -4619,8 +4619,8 @@
     (effects (font (size 1.27 1.27)) (justify left bottom))
     (uuid a035f644-3a2c-4898-88f9-cecf2f1efd4f)
   )
-  (text "NOTE: On the prototype U65.4 is connected\nto U64.10."
-    (at 237.744 156.21 0)
+  (text "TP4: On the prototype U65.4 is connected\nto U64.10. TIE TO VCC."
+    (at 229.87 156.718 0)
     (effects (font (size 1.27 1.27)) (justify left bottom))
     (uuid a330e0c1-d112-4fa6-afd2-20ade49f3218)
   )
