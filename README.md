@@ -12,8 +12,8 @@ been made (like positioning/orientation of jumpers, etc.).
 The first run of the board was defective (bad ground/Vcc), so a second run was
 made. This second version had some issues with jumper orientation, and several
 other small errors had been discovered through a net-by-net continuity check
-against the original board. A third run was made (v004; no v003), which does
-mostly work. There is some screen corruption, so there is a lingering issue
-in the dual-port memory circuit. But, the fact that it works even with screen
-corruption is a significant milestone.
+against the original board. A third run was made (v004; no v003), which works
+fine. It's very sensitive to device speeds (i.e. EPROM and SRAM), so you should
+not use anything faster than 100ns. See the notes in the schematic file.
+
 
