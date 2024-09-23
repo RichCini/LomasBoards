@@ -10,11 +10,10 @@ fine). The board layout has been compared to the original and any corrections ha
 been made (like positioning/orientation of jumpers, etc.).
 
 The first run of the board was defective (bad ground/Vcc), so a second run was
-made. This second version had some issues with jumper orientation, but it does not
-work in the intended test system configuration (a Thunder 186 and ColorMagic two-board
-setup). Several sample boards were sent out to other intrepid builders to see if there's
-something I may have missed after hand-comparing the schematics again. Scans of the Lomas
-schematics are hard to read and some signals had to be verified against a real board. I'm
-hopeful it's something easy to correct. All of the chips on my board have been tested in 
-the real ColorMagic.
+made. This second version had some issues with jumper orientation, and several
+other small errors had been discovered through a net-by-net continuity check
+against the original board. A third run was made (v004; no v003), which does
+mostly work. There is some screen corruption, so there is a lingering issue
+in the dual-port memory circuit. But, the fact that it works even with screen
+corruption is a significant milestone.
 
