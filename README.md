@@ -13,13 +13,12 @@ The first run of the board was defective (bad ground/Vcc), so a second run was
 made. This second version had some issues with jumper orientation, and several
 other small errors that had been discovered through a net-by-net continuity check
 against the original board. A third run was made (v004; no v003), which works
-fine. It's very sensitive to device speeds (i.e. EPROM and SRAM), so you should
-not use anything faster than 100ns. See the notes on the schematics. Regarding
-PAL speeds, most of mine are either 7ns or 15ns.
+fine. 
 
 ### Board Notes - version 1.1-004
 There are 4 tie points (TP2 - TP5) that need to be connected to either VCC 
-(TP3 - TP5) or the /BW (TP2) signal as applicable.
+(TP3 - TP5) or the /BW (TP2) signal as applicable. If another board run is
+done, these will be permanently connected to their respective points.
 
 The speaker connection is like the PC -- simple 4-8 ohm speaker.
 
@@ -37,5 +36,13 @@ HDMI monitor, you need to use an RGB2HDMI adapter like the one from TexElec
 (https://texelec.com/product/rgbtohdmi-ttl/?highlight=hdmi). This one works
 very well and can be used for more than just this setup.
 
-I have a single MS-DOS 3.1 disk image which is also posted. I use a standard
-Gotek interface. The disk is a standard 360k IBM-PC format.
+Regarding memory devices, the design seems to be very sensitive to device speeds
+(i.e. EPROM and SRAM). The character generator EPROM is a D2732A which is a 250ns
+device. The original SRAM are stacked 6264-15 (150ns) chips which I replaced with
+62256-10 (100ns) devices with some adjustments to the circuit. I temporarily used
+55ns chips, and those resulted in screen artifacts. PAL device speeds are either
+7ns or 15ns depending on the device.
+
+I have a single MS-DOS 3.1 disk image which is posted. MS-DOS 2.1 disks are also 
+in the archive but I haven't tried them. I use a standard Gotek interface with the
+images converted to the HFE format. The disk is a standard 360k IBM-PC format.
