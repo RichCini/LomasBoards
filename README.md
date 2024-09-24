@@ -7,7 +7,9 @@ so I'm redrawing it in KiCAD 6 to hopefully reproduce the board.
 ## Color Magic Redux 
 ### Status - version 1.1-004 WORKING
 The PALs have been fully decoded and tested in the original board (and they work
-fine). 
+fine). Many thanks to Jonathan Haddox for lending me an original board set and
+providing extra help and encouragement. Thanks also go to Peter for decoding
+the PALs for this project.
 
 The first run of the board was defective (bad ground/Vcc), so a second run was
 made. This second version had some issues with jumper orientation, and several
