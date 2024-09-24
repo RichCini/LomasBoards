@@ -24,7 +24,7 @@ The speaker connection is like the PC -- simple 4-8 ohm speaker.
 
 The keyboard is a standard PC 5150 type. If you want to use a PS/2-style 
 keyboard, you need to use an AT2XT keyboard converter. I got mine on eBay
-and it as both PS/2 and AT inputs and an XT (DIN-5) output. J3 is the
+and it has both PS/2 and AT inputs and an XT (DIN-5) output. J3 is the
 keyboard interface connector. You will need to build a small dongle cable 
 with a DIN-5F on one end and a 1x5 0.1" pin header connector on the other.
 The AT2XT adapter would then connect to this cable. The PC keyboard pinout
