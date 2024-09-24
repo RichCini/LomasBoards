@@ -17,7 +17,7 @@ fine. It's very sensitive to device speeds (i.e. EPROM and SRAM), so you should
 not use anything faster than 100ns. See the notes on the schematics. Regarding
 PAL speeds, most of mine are either 7ns or 15ns.
 
-## Board Notes - version 1.1-004
+### Board Notes - version 1.1-004
 There are 4 tie points (TP2 - TP5) that need to be connected to either VCC 
 (TP3 - TP5) or the /BW (TP2) signal as applicable.
 
