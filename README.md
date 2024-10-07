@@ -19,8 +19,8 @@ fine.
 
 ### Board Notes - version 1.1-004
 There are 4 tie points (TP2 - TP5) that need to be connected to either VCC 
-(TP3 - TP5) or the /BW (TP2) signal as applicable. If another board run is
-done, these will be permanently connected to their respective points.
+(TP3 - TP5) or the /BW (TP2) signal as applicable. A version 1.1-005 will be
+issued with these connections made permanently.
 
 The speaker connection is like the PC -- simple 4-8 ohm speaker.
 
@@ -45,6 +45,6 @@ device. The original SRAM are stacked 6264-15 (150ns) chips which I replaced wit
 55ns chips, and those resulted in screen artifacts. PAL device speeds are either
 7ns or 15ns depending on the device.
 
-I have a single MS-DOS 3.1 disk image which is posted. MS-DOS 2.1 disks are also 
-in the archive but I haven't tried them. I use a standard Gotek interface with the
-images converted to the HFE format. The disk is a standard 360k IBM-PC format.
+I have a single 360k MS-DOS 3.1 disk image which is posted. MS-DOS 2.1 disks are 
+also in the archive, but appear to rely on direct calls into the monitor in order to
+boot (non-standard MS-DOS boot sector) and are 320k in size (8 sectors).
