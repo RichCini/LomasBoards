@@ -48,3 +48,13 @@ device. The original SRAM are stacked 6264-15 (150ns) chips which I replaced wit
 I have a single 360k MS-DOS 3.1 disk image which is posted. MS-DOS 2.1 disks are 
 also in the archive, but appear to rely on direct calls into the monitor in order to
 boot (non-standard MS-DOS boot sector) and are 320k in size (8 sectors).
+
+## Thunder 186 Redux 
+### Status - version 1.0-003 Prototype
+The schematics have been drawn and the board plotted. A prototype run is being ordered.
+Significant changes made to the design to modernize it a bit (mostly replacing the 
+DRAM memory system with high-density SRAM).
+
+The PALs have been decoded and tested.
+
+
