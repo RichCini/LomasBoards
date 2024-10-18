@@ -5,6 +5,10 @@ supported by the Seattle Gazelle that I own. The board of course is pretty rare,
 so I'm redrawing it in KiCAD 6 to hopefully reproduce the board.
 
 ## Color Magic Redux 
+### Status - version 1.1-005 FINAL
+1.1-005 is the final/release version. 004 had five tiepoints which were
+permanently connected to their final spots. No other changes from 004 were made.
+
 ### Status - version 1.1-004 WORKING
 The PALs have been fully decoded and tested in the original board (and they work
 fine). Many thanks to Jonathan Haddox for lending me an original board set and
@@ -48,6 +52,7 @@ device. The original SRAM are stacked 6264-15 (150ns) chips which I replaced wit
 I have a single 360k MS-DOS 3.1 disk image which is posted. MS-DOS 2.1 disks are 
 also in the archive, but appear to rely on direct calls into the monitor in order to
 boot (non-standard MS-DOS boot sector) and are 320k in size (8 sectors).
+
 
 ## Thunder 186 Redux 
 ### Status - version 1.0-003 Prototype
