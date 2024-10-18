@@ -1,0 +1,59 @@
+//
+// LDP Thunder 186 U36, equations from reverse engineering, assuming no I/Os 
+//		(only I or O) and no registers.
+//	Richard Cini 10/11/2024
+//	Input file for palwiz.exe
+//
+// vectors chip type 14
+Name     T186U36 ;
+PartNo   00 ;
+Date     10/17/2024 ;
+Revision 01 ;
+Designer Cini ;
+Company  BBR Computing ;
+Assembly  ;
+Location  ;
+device g16V8; 		// 16V8 in complex mode (I/Os) Programmed Lattice on TL-866 Programmer
+
+/* Dedicated input pins */
+pin 1 = WRT;
+pin 2 = sOUT;
+pin 3 = READ;
+pin 4 = DEN;
+pin 5 = UCS;
+pin 6 = DODSB;	// unused
+pin 7 = RAMCS;	// alias for LCS
+pin 8 = PCS1;
+pin 9 = sXTRQ;
+pin 11 = LA0;
+
+/* Programmable output pins */
+pin 12 = RAMEN;
+pin 13 = D; 
+pin 14 = B; 
+pin 15 = LCLEN;
+pin 16 = C;
+pin 17 = PHANTOM;
+pin 18 = MWRT;
+pin 19 = A;
+
+
+/* Output equations */
+!A = !DEN & LA0 & PCS1 & RAMCS & !READ & UCS
+    # !DEN & PCS1 & RAMCS & UCS & !sXTRQ;
+
+!B = !DEN & LA0 & PCS1 & RAMCS & READ & UCS & sXTRQ;
+
+!C = !DEN & !LA0 & PCS1 & RAMCS & !READ & UCS & sXTRQ;
+
+!D = !DEN & !LA0 & PCS1 & RAMCS & READ & UCS
+    # !DEN & PCS1 & RAMCS & UCS & !sXTRQ;
+
+LCLEN = PCS1 & !READ
+    # DEN & !READ;
+
+MWRT = !WRT & !sOUT;
+ 
+PHANTOM =  UCS &  RAMCS &  PCS1;
+    
+!RAMEN = !DEN & !RAMCS;

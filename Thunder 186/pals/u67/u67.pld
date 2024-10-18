@@ -1,0 +1,67 @@
+//
+// LDP Thunder 186 U67, equations from reverse engineering, assuming no I/Os 
+//		(only I or O) and no registers.
+//	Richard Cini 10/11/2024
+//	Input file for palwiz.exe
+//
+// vectors chip type 14
+Name     T186U67 ;
+PartNo   00 ;
+Date     10/17/2024 ;
+Revision 01 ;
+Designer Cini ;
+Company  BBR Computing ;
+Assembly  ;
+Location  ;
+device g16V8; 		// 16V8 in complex mode (I/Os) Programmed Lattice on TL-866 Programmer
+
+/* Dedicated input pins */
+pin 1 = NC1; 	// NC
+pin 2 = NC2; 	// NC
+pin 3 = LA0;
+pin 4 = Q0; 
+pin 5 = LBHE;
+pin 6 = READ;
+pin 7 = Q2;
+pin 8 = NC3; 	// NC
+pin 9 = NC4; 	// NC
+pin 11 = SDSB;
+
+/* Programmable output pins */
+pin 12 = SXTRQ;
+pin 13 = SHLTA;
+pin 14 = SMEMR;
+pin 15 = SWO; 
+pin 16 = SINTA; 
+pin 17 = SINP; 
+pin 18 = SOUT; 
+pin 19 = SM1;
+
+/* Output equations */
+
+!SHLTA = !READ & !SDSB
+  # Q2 & !SDSB
+  # !Q0 & !SDSB;
+
+!SINP = Q0 & Q2 & !READ & !SDSB
+  # READ & !SDSB
+  # !Q0 & !SDSB;
+
+!SINTA = Q2 & !SDSB
+  # READ & !SDSB
+  # Q0 & !SDSB;
+
+!SM1 = !Q0 & Q2 & READ & !SDSB
+  # !Q2 & !SDSB
+  # Q0 & !SDSB;
+
+!SMEMR = READ & !SDSB
+  # !Q2 & !SDSB;
+
+!SOUT = !Q0 & Q2 & !SDSB
+  # !READ & !SDSB
+  # Q0 & !SDSB;
+
+!SWO = !Q0 & READ & !SDSB;
+
+!SXTRQ = !LA0 & !LBHE & !SDSB;
