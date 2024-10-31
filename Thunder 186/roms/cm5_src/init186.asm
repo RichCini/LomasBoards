@@ -35,20 +35,33 @@ loc_312:				;  xref A.1C1E
 ; Initialization table. First word is the port and
 ; second word is the value.
 inittbl:
-    	db	0A0h,0FFh, 38h,0FEh
-	db	0A2h,0FFh, 0F8h, 3Fh
-	db	0A4h,0FFh, 3Ah, 00h
-     	db	0A6h,0FFh, 38h, 40h
-	db	0A8h,0FFh, 38h,0A0h
-	db	52h,0FFh, 06h, 00h
-	db	54h,0FFh, 07h, 00h
-	db	56h,0FFh, 03h,0C0h
-	db	5Ah,0FFh, 06h, 00h
-     	db	5Ch,0FFh, 07h, 00h
-	db	5Eh,0FFh, 03h,0C0h
-	db	62h,0FFh, 20h, 4Eh
-    	db	66h,0FFh, 01h,0C0h
-	db	00h, 00h
+;    	db	0A0h,0FFh, 38h,0FEh
+;	db	0A2h,0FFh, 0F8h, 3Fh
+;	db	0A4h,0FFh, 3Ah, 00h
+;    	db	0A6h,0FFh, 38h, 40h
+;	db	0A8h,0FFh, 38h,0A0h
+;	db	52h,0FFh, 06h, 00h
+;	db	54h,0FFh, 07h, 00h
+;	db	56h,0FFh, 03h,0C0h
+;	db	5Ah,0FFh, 06h, 00h
+;    	db	5Ch,0FFh, 07h, 00h
+;	db	5Eh,0FFh, 03h,0C0h
+;	db	62h,0FFh, 20h, 4Eh
+;   	db	66h,0FFh, 01h,0C0h
+    	dw	PCRBASE+CSCR, 0FE38h
+	dw	PCRBASE+LMCR, 3FF8h
+	dw	PCRBASE+PACS, 003Ah
+    	dw	PCRBASE+MMCS, 4038h
+	dw	PCRBASE+MPCS, 0A038h
+	dw	PCRBASE+TM0CR+TMRCA, 0006h
+	dw	PCRBASE+TM0CR+TMRCB, 0007h
+	dw	PCRBASE+TM0CR+TMRCW, 0C003h
+	dw	PCRBASE+TM1CR+TMRCA, 0006h
+    	dw	PCRBASE+TM1CR+TMRCB, 0007h
+	dw	PCRBASE+TM1CR+TMRCW, 0C003h
+	dw	PCRBASE+TM2CR+TMRCA, 4E20h
+   	dw	PCRBASE+TM2CR+TMRCW, 0C001h
+	dw	00h, 00h
 
 ; Initialization table 2. Ports?
 inittbl2:

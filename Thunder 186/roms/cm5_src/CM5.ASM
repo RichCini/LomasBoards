@@ -23,6 +23,11 @@ PAGE  59,132
 ;	INT3 = bus VI6/VI7 and RX1/RX2	}
 ;	NMI = parity fail (unused with SRAM) and bus NMI
 ;
+; There are several references to ports D0-D6 which are 
+; not documented. This could be the 8255 (config switches
+; and printer port). Since the CM5 relies on the Color
+; Magic, I doubt the baud rate switches would be important.
+;
 ; SCSI IRQ 3, port 310h, D8000h
 ;
 ; The last byte has to be patched with DEBUG as follows
@@ -116,7 +121,6 @@ ER_ROM  equ     20h             ; Bad ROM in expansion area, bad checksum
 LF      equ     0Ah
 CR      equ     0Dh
 
-
 ;===============================================================================
 ;  Compiler directives
 ;
@@ -141,11 +145,35 @@ scratch1	db	? 			; scratch pad
 		db	?
 ;---------------[Keyboard data area]------------;
 keybd_flags_1	db	?			; (0040:0017=0)
+;------ SHIFT FLAG EQUATES WITHIN KB_FLAG
+INS_STATE	EQU	80H			; INSERT STATE IS ACTIVE
+CAPS_STATE	EQU	40H			; CAPS LOCK STATE HAS BEEN TOGGLED
+NUM_STATE	EQU	20H			; NUM LOCK STATE HAS BEEN TOGGLED
+SCROLL_STATE	EQU	10H			; SCROLL LOCK STATE HAS BEEN TOGGLED
+ALT_SHIFT	EQU	08H			; ALTERNATE SHIFT KEY DEPRESSED
+CTL_SHIFT	EQU	04H			; CONTROL SHIFT KEY DEPRESSED
+LEFT_SHIFT	EQU	02H			; LEFT SHIFT KEY DEPRESSED
+RIGHT_SHIFT	EQU	01H			; RIGHT SHIFT KEY DEPRESSED
 keybd_flags_2	db	?			; (0040:0018=0)
+INS_SHIFT	EQU	80H			; INSERT KEY IS DEPRESSED
+CAPS_SHIFT	EQU	40H			; CAPS LOCK KEY IS DEPRESSED
+NUM_SHIFT	EQU	20H			; NUM LOCK KEY IS DEPRESSED
+SCROLL_SHIFT	EQU	10H			; SCROLL LOCK KEY IS DEPRESSED
+HOLD_STATE	EQU	08H			; SUSPEND KEY HAS BEEN TOGGLED
 keybd_alt_num	db	?			; (0040:0019=0)
 keybd_q_head	dw	?			; (0040:001A=30h)
 keybd_q_tail	dw	?			; (0040:001C=30h)
 keybd_buff	dw	16 dup (?)		; 001E
+;------ HEAD = TAIL INDICATES THAT THE BUFFER IS EMPTY
+NUM_KEY 	EQU	69			; SCAN CODE FOR NUMBER LOCK
+SCROLL_KEY	EQU	70			; SCROLL LOCK KEY
+ALT_KEY 	EQU	56			; ALTERNATE SHIFT KEY SCAN CODE
+CTL_KEY 	EQU	29			; SCAN CODE FOR CONTROL KEY
+CAPS_KEY	EQU	58			; SCAN CODE FOR SHIFT LOCK
+LEFT_KEY	EQU	42			; SCAN CODE FOR LEFT SHIFT
+RIGHT_KEY	EQU	54			; SCAN CODE FOR RIGHT SHIFT
+INS_KEY 	EQU	82			; SCAN CODE FOR INSERT KEY
+DEL_KEY 	EQU	83			; SCAN CODE FOR DELETE KEY
 ;---------------[Diskette data area]------------;
 dsk_recal_stat	db	?			; (0040:003E=0)
 dsk_motor_stat	db	?			; (0040:003F=0)
@@ -279,7 +307,11 @@ endm
 ; this code sits at F:E000
 ;	org	0E000h	
 	org	0		; zero-start ROM
-banner: 	db	"LDP THUNDER REV 1.0 10/21/85", 0ah, 0dh, 0
+banner: 	db	"LDP THUNDER REV 1.0 10/21/85"
+;	IF	SCSI
+;		db	"-S"
+;	ENDIF
+		db	0ah, 0dh, 0
 
 ; Continues from CPU initialization code at 1C00h initializes the 80186
 ; internal registers. The expansion ROM call has to occur after the hardware
@@ -2321,51 +2353,90 @@ loc_ret_140:					;  xref A.0BDA
  		retn
 sub_30		endp
 
-; must be some sort of keyboard translatioon table
-;a.0be0
-data_84:		db	52h			;  xref A.0D20
-     		db	 3Ah, 45h, 46h, 38h, 1Dh, 2Ah
- 		db	 36h
+
+;a.0be0 - could be scan codes for modifier keys. Note lack of DEL key
+; modifier.
+; xref A.0D20
+;K6
+data_84:	;db	52h, 3Ah, 45h, 46h
+		db	INS_KEY, CAPS_KEY, NUM_KEY, SCROLL_KEY
+;		db	38h, 1Dh, 2Ah, 36h
+		db	ALT_KEY, CTL_KEY, KEFT_KEY, RIGHT_KEY
+
+; Shift mask table
 ;a.0be9
-data_85:	db	80h			; Data table (indexed access)
- 						;  xref A.0D33
-     		db	 40h, 20h, 10h, 08h, 04h, 02h
-     		db	 01h, 1Bh,0FFh, 00h,0FFh,0FFh
+;K7
+data_85:	;db	80h, 40h, 20h, 10h		;  xref A.0D33
+		db	INS_SHIFT, CAPS_SHIFT, NUM_SHIFT, SCROLL_SHIFT
+;     		db	08h, 04h, 02h, 01h	
+		db	ALT_SHIFT ,CTL_SHIFT, LEFT_SHIFT, RIGHT_SHIFT
+	
+; Scan Code Tables
+;a.0bf0
+;K8
+		db	1Bh,0FFh, 00h,0FFh,0FFh
      		db	0FFh, 1Eh,0FFh,0FFh,0FFh,0FFh
-     		db	 1Fh,0FFh, 7Fh,0FFh, 11h, 17h
-     		db	 05h, 12h, 14h, 19h, 15h, 09h
-     		db	 0Fh, 10h, 1Bh, 1Dh, 0Ah,0FFh
-     		db	 01h, 13h, 04h, 06h, 07h, 08h
-     		db	 0Ah, 0Bh, 0Ch,0FFh,0FFh,0FFh
+     		db	1Fh,0FFh, 7Fh,0FFh, 11h, 17h
+     		db	05h, 12h, 14h, 19h, 15h, 09h
+     		db	0Fh, 10h, 1Bh, 1Dh, 0Ah,0FFh
+     		db	01h, 13h, 04h, 06h, 07h, 08h
+     		db	0Ah, 0Bh, 0Ch,0FFh,0FFh,0FFh
      		db	0FFh, 1Ch, 1Ah, 18h, 03h, 16h
-     		db	 02h, 0Eh, 0Dh,0FFh,0FFh,0FFh
+     		db	02h, 0Eh, 0Dh,0FFh,0FFh,0FFh
  		db	0FFh,0FFh,0FFh, 20h,0FFh
+
+; Control Table Scan
+;a.0c2a
+;K9		
      		db	'^_`abcdefg'
      		db	0FFh,0FFh, 77h,0FFh, 84h,0FFh
      		db	 73h,0FFh, 74h,0FFh, 75h,0FFh
  		db	 76h,0FFh,0FFh
+
+; LC Table
 ;a.0c43
+;K10
 data_86:	db	1Bh, '1234567890-=', 8, 9, 'qwert'	;  xref A.0F2D
-     		db	'yuiop[]', 0Dh
- 		db	0FFh
-     		db	'asdfghjkl',3bh,27h,60h
- 		db	0FFh
+     		db	'yuiop[]', 0Dh, 0FFh
+     		db	'asdfghjkl',3bh,27h,60h, 0FFh
      		db	'\zxcvbnm,./'
  		db	0FFh, 2Ah,0FFh, 20h,0FFh
+
+; UC Table
+;a.0c7d
+;K11
  		db	1Bh, '!@#$'
-     		db	'%^&*()_+', 8
- 		db	0
-     		db	'QWERTYUIOP{}', 0Dh
- 		db	0FFh
-     		db	'ASDFGHJKL:"~'
- 		db	0FFh
+     		db	'%^&*()_+', 8, 0
+     		db	'QWERTYUIOP{}', 0Dh, 0FFh
+     		db	'ASDFGHJKL:"~', 0FFh
      		db	'|ZXCVBNM<>?'
-     		db	0FFh, 00h,0FFh, 20h,0FFh, 54h
- 		db	 55h
-     		db	'VWXYZ[\]hiklmn'
-     		db	'opq789-456+1230.GHI'
-     		db	0FFh, 4Bh,0FFh, 4Dh,0FFh, 4Fh
-		db	50h, 51h, 52h, 53h 
+     		db	0FFh, 00h,0FFh, 20h,0FFh
+
+; UC Table Scan
+;a.0cb7
+;K12
+;		db	54h, 55h, 'VWXYZ[\]'
+		db	84,85,86,87,88,89,90
+		db	91,92,93
+
+; Alt Table Scan
+;K13
+;a.0cc1
+;		db	'hiklmnopq'
+		db	104,105,106,107,108
+		db	109,110,111,112,113
+
+; Num State Table
+;a.0cca
+;K14
+		db	'789-456+1230.'
+
+;a.0cd7
+;K15
+;		db	'GHI', 0FFh, 4Bh,0FFh, 4Dh,0FFh, 4Fh
+;		db	50h, 51h, 52h, 53h 
+		db	71,72,73,-1,75,-1,77
+		db	-1,79,80,81,82,83
  
 ;a.0ce4
 INT0DHANDLER:
@@ -4365,6 +4436,13 @@ ADDBYT: ADD     AL,[BX]                         ; Add byte to checksum
 	OR      AL,AL                           ; Set condition codes
 	RET                                     ;  ...and return
 ENDIF
+
+; In the Monitor v3.3, the SCSI code resides near the end of the ROM
+; before some RAM test code and the 186 init. It is included as a
+; library file but I don't know if that's a true library or just
+; a plain-text source file
+;
+;include "scsimon.asm"
 
 ;a.1c00
 	org	01c00h
