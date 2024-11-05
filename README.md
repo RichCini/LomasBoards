@@ -37,7 +37,7 @@ The AT2XT adapter would then connect to this cable. The PC keyboard pinout
 is available on the Internet.
 
 Regarding video, the output is standard RGBI/CGA in addition to B&W composite. 
-The RGBI interface cable is a standard 2x5 IDC to a DE9M. To use with a modern
+The RGBI interface cable is a standard 2x5 IDC to a DE9F. To use with a modern
 HDMI monitor, you need to use an RGB2HDMI adapter like the one from TexElec
 (https://texelec.com/product/rgbtohdmi-ttl/?highlight=hdmi). This one works
 very well and can be used for more than just this setup.
