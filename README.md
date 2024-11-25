@@ -56,10 +56,14 @@ boot (non-standard MS-DOS boot sector) and are 320k in size (8 sectors).
 
 ## Thunder 186 Redux 
 ### Status - version 1.0-003 Prototype
-The schematics have been drawn and the board plotted. A prototype run is being ordered.
-Significant changes made to the design to modernize it a bit (mostly replacing the 
-DRAM memory system with high-density SRAM).
+The schematics have been drawn and the board plotted, and the PALs decoded and tested. 
+A prototype run was ordered but the board is borked. The base PLCC footprint is wrong -- 
+the 80186 (and 80286) use a non-standard pinning even though they use the PLCC68 package. 
+So, I found a compatible footprint and ran another version of the board...
 
-The PALs have been decoded and tested.
+### Status - version 1.0-005
+Works! PC-DOS 3 reports 256k of RAM which is correct. Testing still needs to be done on
+the serial and parallel ports.
+
 
 
