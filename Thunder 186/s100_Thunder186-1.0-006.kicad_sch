@@ -1,0 +1,256 @@
+(kicad_sch
+	(version 20231120)
+	(generator "eeschema")
+	(generator_version "8.0")
+	(uuid "048cf1fc-81fe-43c0-b445-36f3c2f214da")
+	(paper "USLetter")
+	(title_block
+		(title "Lomas Thunder 186 Rev. E")
+		(date "2024-11-25")
+		(rev "1.0-006")
+		(company "Lomas Data Produtcs")
+		(comment 1 "Redraw/modifications (c) Richard A. Cini")
+		(comment 2 "Schematic page 1")
+	)
+	(lib_symbols)
+	(text "General Notes:\n\n01.	Schematics are lableled \"REV E\".\n02.	The CPU must be an original 80186. The \"C\" or \"XL\" suffix\n	chips require different configuration register settings to\n	be compatible and to have the right UCS/LCS configuration.\n03.	Notwithstanding the dual footprint for the TMS4500/TMS4501,\n	(which would accommodate higher density RAM), the board\n	cannot use more than 256k on-board due to the LCS* chip\n	select. There is another version of this board called the\n	ThunderPlus which has 512k base memory, up to 1MB. Not sure\n	how that would work given the BIOS ROM area but it would\n	likely require a different version of the BIOS and circuit\n	changes to use the other chip select lines from the 80186.\n"
+		(exclude_from_sim no)
+		(at 24.13 71.374 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "18e998d1-1c3b-4bc2-aca5-2c132e3726cd")
+	)
+	(text "ECOs on the original board:\n\nThere are 4 changes on the back of the board:\n\n01. Added 1k pull-up from RN2.2 to U32.1 (pull-up\n    on the RD_DATA* signal from the floppy).\n02. U45.2 disconnected from U45.4 and connected to\n	U45.1 and .13 (correct on schematic).\n	U45.4 and U45.10 NOT connected to VCC.\n03. U59 inverter added to U32.7 (correct on schematic).\n04. Added jumper J9 to allow connecting U44.40 and U44.41\n	to VCC.\n"
+		(exclude_from_sim no)
+		(at 200.152 75.184 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "54279ec4-90f1-4846-bace-1b0109619d7b")
+	)
+	(text "NOTES/ERRATA from 1.0-001 to 1.0-002 (not manufactured):\n00. 10/15/24\n01. Alternative memory arrangement using high-denisity\n    SRAM like the AS6C4008 512kx8-55 configured as\n	2x128k. \n\nNOTES/ERRATA from 1.0-002 to 1.0-003 (manufactured):\n00. 10/18/24\n01. Changed serial level shifters to higher-density\n	versions; changed serial port headers to accommodate\n	PC motherboard DE9 dongles.\n\nNOTES/ERRATA from 1.0-003 to 1.0-004 (not manfactured):\n00. 10/18/24. Transient version; not routed.\n01. U28.7 not connected to J2.7 (bad net name)\n02. Capacitors C3 and C8 are polairty reversed on the\n	79L12 regulator.\n03.	Renamed address bus nets as the internal bus goes\n	right out to the external bus.\n\nNOTES/ERRATA from 1.0-004 to 1.0-005:\n00. 11/14/24\n01. Discovered that the footprint for the 80186 was wrong\n	(apparently Intel misnumbered the pins from the standard\n	PLCC68, thus needing a custom footprint).\n\nNOTES/ERRATA from 1.0-005 to 1.0-006:\n00. 11/25/24\n01. Shifted the bypass caps around the CPU to increase spacing.\n02. Shifter oscillator down slightly to increase spacing.\n"
+		(exclude_from_sim no)
+		(at 24.638 158.75 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+			(href "#1")
+		)
+		(uuid "a01a14f1-82cb-40ee-8507-e082809efec7")
+	)
+	(text "Design Changes:\n\n01.	16MHz crystal replaced by TTL oscillator.\n02.	Adjustible voltage regulators replaced with either a\n	switching regulator (5V) or small linear regulators\n	(which are only used for serial level shifters).\n03.	Entire DRAM section removed (saves 40 chips) in favor\n	of high-density 55ns SRAM.\n04. MC1488/1489 level shifters replaced with higher-density\n	MAX1406 shifters. J1/J2 changed to modern IBM-PC style\n	motherboard headers.\n05.	CPU package changed from LCC to PLCC which are easier\n	to find.\n06.	Prototype had four RPACKs (1k x2 and 4.7k x2) of which only\n	two were partially used. Pull-up resistors were specified in\n	other parts of the circuit but not used on the prototype.\n"
+		(exclude_from_sim no)
+		(at 113.284 74.168 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "c3d0f9db-87db-465d-84f8-40cf9820fc31")
+	)
+	(sheet
+		(at 63.246 19.558)
+		(size 40.894 31.242)
+		(fields_autoplaced yes)
+		(stroke
+			(width 0.1524)
+			(type solid)
+		)
+		(fill
+			(color 0 0 0 0.0000)
+		)
+		(uuid "451062ee-6f65-419b-a7e1-4842a9f8c2af")
+		(property "Sheetname" "CPU_ROM_Serial"
+			(at 63.246 18.8464 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left bottom)
+			)
+		)
+		(property "Sheetfile" "sch_pg1.kicad_sch"
+			(at 63.246 51.3846 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left top)
+			)
+		)
+		(instances
+			(project "s100_Thunder186-1.0-006"
+				(path "/048cf1fc-81fe-43c0-b445-36f3c2f214da"
+					(page "3")
+				)
+			)
+		)
+	)
+	(sheet
+		(at 18.034 19.558)
+		(size 42.164 31.496)
+		(fields_autoplaced yes)
+		(stroke
+			(width 0.1524)
+			(type solid)
+		)
+		(fill
+			(color 0 0 0 0.0000)
+		)
+		(uuid "66b0afa9-59c4-46b7-b585-f7e7e5bf49b5")
+		(property "Sheetname" "Power_Buss_IF"
+			(at 18.034 18.8464 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left bottom)
+			)
+		)
+		(property "Sheetfile" "pwr_S100buss.kicad_sch"
+			(at 18.034 51.6386 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left top)
+			)
+		)
+		(instances
+			(project "s100_Thunder186-1.0-006"
+				(path "/048cf1fc-81fe-43c0-b445-36f3c2f214da"
+					(page "2")
+				)
+			)
+		)
+	)
+	(sheet
+		(at 152.654 19.812)
+		(size 38.862 30.48)
+		(fields_autoplaced yes)
+		(stroke
+			(width 0.1524)
+			(type solid)
+		)
+		(fill
+			(color 0 0 0 0.0000)
+		)
+		(uuid "8ab68cdf-829e-4846-8853-1f3296ecb671")
+		(property "Sheetname" "Memory"
+			(at 152.654 19.1004 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left bottom)
+			)
+		)
+		(property "Sheetfile" "sch_pg3.kicad_sch"
+			(at 152.654 50.8766 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left top)
+			)
+		)
+		(instances
+			(project "s100_Thunder186-1.0-006"
+				(path "/048cf1fc-81fe-43c0-b445-36f3c2f214da"
+					(page "5")
+				)
+			)
+		)
+	)
+	(sheet
+		(at 108.458 19.558)
+		(size 39.116 31.242)
+		(fields_autoplaced yes)
+		(stroke
+			(width 0.1524)
+			(type solid)
+		)
+		(fill
+			(color 0 0 0 0.0000)
+		)
+		(uuid "b15f5c38-53f7-4516-bc4f-efdb461a5759")
+		(property "Sheetname" "Floppy_Parallel_IF"
+			(at 108.458 18.8464 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left bottom)
+			)
+		)
+		(property "Sheetfile" "sch_pg2.kicad_sch"
+			(at 108.458 51.3846 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left top)
+			)
+		)
+		(instances
+			(project "s100_Thunder186-1.0-006"
+				(path "/048cf1fc-81fe-43c0-b445-36f3c2f214da"
+					(page "4")
+				)
+			)
+		)
+	)
+	(sheet
+		(at 196.596 19.812)
+		(size 37.592 30.48)
+		(fields_autoplaced yes)
+		(stroke
+			(width 0.1524)
+			(type solid)
+		)
+		(fill
+			(color 0 0 0 0.0000)
+		)
+		(uuid "f18f69ea-453b-4e6e-a333-4a79be0636c4")
+		(property "Sheetname" "S100 Bus Interface"
+			(at 196.596 19.1004 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left bottom)
+			)
+		)
+		(property "Sheetfile" "sch_pg4.kicad_sch"
+			(at 196.596 50.8766 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left top)
+			)
+		)
+		(instances
+			(project "s100_Thunder186-1.0-006"
+				(path "/048cf1fc-81fe-43c0-b445-36f3c2f214da"
+					(page "6")
+				)
+			)
+		)
+	)
+	(sheet_instances
+		(path "/"
+			(page "1")
+		)
+	)
+)

@@ -6,8 +6,8 @@
 	(paper "A")
 	(title_block
 		(title "Lomas Thunder 186 Rev. E")
-		(date "2024-11-14")
-		(rev "1.0-005")
+		(date "2024-11-25")
+		(rev "1.0-006")
 		(company "Lomas Data Produtcs")
 		(comment 1 "Redraw/modifications (c) Richard A. Cini")
 		(comment 2 "Schematic page 3")
