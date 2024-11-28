@@ -62,8 +62,12 @@ the 80186 (and 80286) use a non-standard pinning even though they use the PLCC68
 So, I found a compatible footprint and ran another version of the board...
 
 ### Status - version 1.0-005
-Works! PC-DOS 3 reports 256k of RAM which is correct. Testing still needs to be done on
-the serial and parallel ports.
+Works! PC-DOS 3 reports 256k of RAM which is correct. Serial ports work, trying to
+test the parallel port. 
+
+There is one errata. Capacitor C9 in the reset circuit should be 22uF/16v polarized,
+minus to ground. This will be fixed in the final version.
+
 
 
 
