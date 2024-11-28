@@ -6,16 +6,16 @@
 	(paper "USLetter")
 	(title_block
 		(title "Lomas Thunder 186 Rev. E")
-		(date "2024-11-25")
+		(date "2024-11-28")
 		(rev "1.0-006")
 		(company "Lomas Data Produtcs")
 		(comment 1 "Redraw/modifications (c) Richard A. Cini")
 		(comment 2 "Schematic page 1")
 	)
 	(lib_symbols)
-	(text "General Notes:\n\n01.	Schematics are lableled \"REV E\".\n02.	The CPU must be an original 80186. The \"C\" or \"XL\" suffix\n	chips require different configuration register settings to\n	be compatible and to have the right UCS/LCS configuration.\n03.	Notwithstanding the dual footprint for the TMS4500/TMS4501,\n	(which would accommodate higher density RAM), the board\n	cannot use more than 256k on-board due to the LCS* chip\n	select. There is another version of this board called the\n	ThunderPlus which has 512k base memory, up to 1MB. Not sure\n	how that would work given the BIOS ROM area but it would\n	likely require a different version of the BIOS and circuit\n	changes to use the other chip select lines from the 80186.\n"
+	(text "General Notes:\n\n01.	Schematics are lableled \"REV E\".\n02.	The CPU must be an original 80186. The \"C\" or \"XL\" suffix\n	chips require different configuration register settings to\n	be compatible and to have the right UCS/LCS configuration.\n03.	Notwithstanding the dual footprint for the TMS4500/TMS4501,\n	(which would accommodate higher density RAM), the board\n	cannot use more than 256k on-board due to the LCS* chip\n	select. There is another version of this board called the\n	ThunderPlus which has 512k base memory, up to 1MB. Not sure\n	how that would work given the BIOS ROM area but it would\n	likely require a different version of the BIOS and circuit\n	changes to use the other chip select lines from the 80186.\n04. Note that the two serial ports are configured as NULL, but not\n	a standard NULL pinout. RX/TX are fine, but the handshaking \n	lines are not standard.\n"
 		(exclude_from_sim no)
-		(at 24.13 71.374 0)
+		(at 23.368 74.93 0)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -35,15 +35,14 @@
 		)
 		(uuid "54279ec4-90f1-4846-bace-1b0109619d7b")
 	)
-	(text "NOTES/ERRATA from 1.0-001 to 1.0-002 (not manufactured):\n00. 10/15/24\n01. Alternative memory arrangement using high-denisity\n    SRAM like the AS6C4008 512kx8-55 configured as\n	2x128k. \n\nNOTES/ERRATA from 1.0-002 to 1.0-003 (manufactured):\n00. 10/18/24\n01. Changed serial level shifters to higher-density\n	versions; changed serial port headers to accommodate\n	PC motherboard DE9 dongles.\n\nNOTES/ERRATA from 1.0-003 to 1.0-004 (not manfactured):\n00. 10/18/24. Transient version; not routed.\n01. U28.7 not connected to J2.7 (bad net name)\n02. Capacitors C3 and C8 are polairty reversed on the\n	79L12 regulator.\n03.	Renamed address bus nets as the internal bus goes\n	right out to the external bus.\n\nNOTES/ERRATA from 1.0-004 to 1.0-005:\n00. 11/14/24\n01. Discovered that the footprint for the 80186 was wrong\n	(apparently Intel misnumbered the pins from the standard\n	PLCC68, thus needing a custom footprint).\n\nNOTES/ERRATA from 1.0-005 to 1.0-006:\n00. 11/25/24\n01. Shifted the bypass caps around the CPU to increase spacing.\n02. Shifter oscillator down slightly to increase spacing.\n"
+	(text "NOTES/ERRATA from 1.0-001 to 1.0-002 (not manufactured):\n00. 10/15/24\n01. Alternative memory arrangement using high-denisity\n    SRAM like the AS6C4008 512kx8-55 configured as\n	2x128k. \n\nNOTES/ERRATA from 1.0-002 to 1.0-003 (manufactured):\n00. 10/18/24\n01. Changed serial level shifters to higher-density\n	versions; changed serial port headers to accommodate\n	PC motherboard DE9 dongles.\n\nNOTES/ERRATA from 1.0-003 to 1.0-004 (not manfactured):\n00. 10/18/24. Transient version; not routed.\n01. U28.7 not connected to J2.7 (bad net name)\n02. Capacitors C3 and C8 are polairty reversed on the\n	79L12 regulator.\n03.	Renamed address bus nets as the internal bus goes\n	right out to the external bus.\n\nNOTES/ERRATA from 1.0-004 to 1.0-005:\n00. 11/14/24\n01. Discovered that the footprint for the 80186 was wrong\n	(apparently Intel misnumbered the pins from the standard\n	PLCC68, thus needing a custom footprint).\n\nNOTES/ERRATA from 1.0-005 to 1.0-006:\n00. 11/25/24\n01. Shifted the bypass caps around the CPU to increase spacing.\n02. Shifter oscillator down slightly to increase spacing.\n03. Went back to original 2x10 header to allow for DM25F as used\n	on the original board.\n04. C9 in the POC circuit should be 22uf polarized. It's mis-drawn\n	on the original schematic. Due to spacing, original footprint\n	is used with a silkscreen polarity marking.\n"
 		(exclude_from_sim no)
-		(at 24.638 158.75 0)
+		(at 23.368 176.784 0)
 		(effects
 			(font
 				(size 1.27 1.27)
 			)
 			(justify left bottom)
-			(href "#1")
 		)
 		(uuid "a01a14f1-82cb-40ee-8507-e082809efec7")
 	)

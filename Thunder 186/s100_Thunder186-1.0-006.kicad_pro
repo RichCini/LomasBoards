@@ -451,7 +451,7 @@
     "pinned_symbol_libs": []
   },
   "meta": {
-    "filename": "s100_Thunder186-1.0-005.kicad_pro",
+    "filename": "s100_Thunder186-1.0-006.kicad_pro",
     "version": 1
   },
   "net_settings": {
@@ -531,7 +531,7 @@
       "netlist": "s100_6502.net",
       "plot": "mfg/",
       "pos_files": "",
-      "specctra_dsn": "s100_Thunder186-1.0-005.dsn",
+      "specctra_dsn": "s100_Thunder186-1.0-006.dsn",
       "step": "",
       "svg": "",
       "vrml": ""
