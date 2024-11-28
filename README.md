@@ -65,8 +65,10 @@ So, I found a compatible footprint and ran another version of the board...
 Works! PC-DOS 3 reports 256k of RAM which is correct. Serial ports work, trying to
 test the parallel port. 
 
-There is one errata. Capacitor C9 in the reset circuit should be 22uF/16v polarized,
-minus to ground. This will be fixed in the final version.
+There is one errata. Capacitor C9 in the reset circuit should be 22uF/16v polarized; it
+is misdrawn on the original schematic. Due to the tight layout, the original footprint
+is kept but the polarity is marked on the silkscreen. A regular tantalum fits fine. The
+original board uses a 10v tantalum.
 
 
 
