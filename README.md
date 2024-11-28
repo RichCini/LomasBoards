@@ -83,6 +83,14 @@ program. My go-to serial-USB dongle wasn't driving the handshaking lines to conf
 voltages. After changing USB interfaces, it worked. Original interfaces, like on a DOS
 laptop I keep around for such purposes, work fine.
 
+Regarding DOS versions, I run PC/DOS rather than MS-DOS. Versions 3.0, 3.1, and 3.3 work.
+
+The I/O ports (serial and parallel) are at non-standard, non-PC-compatible addresses, so
+any software that uses them either has to (1) allow for defining custom ports, (2) read
+the BIOS data area in order to get the right port number, or (3) rely solely on BIOS
+calls to access the hardware.
+
+
 
 
 
