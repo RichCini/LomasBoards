@@ -61,7 +61,7 @@ A prototype run was ordered but the board is borked. The base PLCC footprint is 
 the 80186 (and 80286) use a non-standard pinning even though they use the PLCC68 package. 
 So, I found a compatible footprint and ran another version of the board...
 
-### Status - version 1.0-005
+### Status - version 1.0-005 Working
 Works! PC-DOS 3 reports 256k of RAM which is correct. Serial ports work, trying to
 test the parallel port. 
 
@@ -69,6 +69,20 @@ There is one errata. Capacitor C9 in the reset circuit should be 22uF/16v polari
 is misdrawn on the original schematic. Due to the tight layout, the original footprint
 is kept but the polarity is marked on the silkscreen. A regular tantalum fits fine. The
 original board uses a 10v tantalum.
+
+### Status - version 1.0-006 FINAL
+The serial headers were changed back to the 2x10 used on the prototype which then requires
+using a DB25F on the cable, consistent with the original. No other circuit changes were done.
+Minor corrections and changes to silk screen placement and the aforementioned polarity marking
+on C9 were done.
+
+### Operational Notes
+The serial section seems to be sensivite to the voltage levels used on the interface of the
+peripherals connected to it. This became evident when trying the old Move-IT file transfer
+program. My go-to serial-USB dongle wasn't driving the handshaking lines to conforming
+voltages. After changing USB interfaces, it worked. Original interfaces, like on a DOS
+laptop I keep around for such purposes, work fine.
+
 
 
 
