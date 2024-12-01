@@ -6,7 +6,7 @@
 	(paper "B")
 	(title_block
 		(title "Lomas Thunder 186 Rev. E")
-		(date "2024-11-28")
+		(date "2024-12-01")
 		(rev "1.0-006")
 		(company "Lomas Data Produtcs")
 		(comment 1 "Redraw/modifications (c) Richard A. Cini")
@@ -9658,7 +9658,7 @@
 		)
 		(uuid "78a1a5c1-c242-4d7e-992a-a344ac2f9eab")
 	)
-	(text "NOTE: R4 is 5.1k on the schematic."
+	(text "NOTE: R4 is 5.1k on the schematic and C9 is\ndrawn as a non-polarized cap."
 		(exclude_from_sim no)
 		(at 57.15 199.644 0)
 		(effects
@@ -13730,7 +13730,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Capacitor_THT:C_Disc_D4.3mm_W1.9mm_P5.00mm"
+		(property "Footprint" "Capacitor_THT:CP_Radial_Tantal_D4.5mm_P2.50mm"
 			(at 56.8452 190.5 0)
 			(effects
 				(font
