@@ -55,11 +55,11 @@ boot (non-standard MS-DOS boot sector) and are 320k in size (8 sectors).
 
 
 ## Thunder 186 Redux 
-### Status - version 1.0-003 Prototype
-The schematics have been drawn and the board plotted, and the PALs decoded and tested. 
-A prototype run was ordered but the board is borked. The base PLCC footprint is wrong -- 
-the 80186 (and 80286) use a non-standard pinning even though they use the PLCC68 package. 
-So, I found a compatible footprint and ran another version of the board...
+### Status - version 1.0-006 FINAL
+The serial headers were changed back to the 2x10 used on the prototype which then requires
+using a DB25F on the cable, consistent with the original. No other circuit changes were done.
+Minor corrections and changes to silk screen placement and the aforementioned polarity marking
+on C9 were done.
 
 ### Status - version 1.0-005 Working
 Works! PC-DOS 3 reports 256k of RAM which is correct. Serial ports work, trying to
@@ -70,11 +70,12 @@ is misdrawn on the original schematic. Due to the tight layout, the original foo
 is kept but the polarity is marked on the silkscreen. A regular tantalum fits fine. The
 original board uses a 10v tantalum.
 
-### Status - version 1.0-006 FINAL
-The serial headers were changed back to the 2x10 used on the prototype which then requires
-using a DB25F on the cable, consistent with the original. No other circuit changes were done.
-Minor corrections and changes to silk screen placement and the aforementioned polarity marking
-on C9 were done.
+### Status - version 1.0-003 Prototype
+The schematics have been drawn and the board plotted, and the PALs decoded and tested. 
+A prototype run was ordered but the board is borked. The base PLCC footprint is wrong -- 
+the 80186 (and 80286) use a non-standard pinning even though they use the PLCC68 package. 
+So, I found a compatible footprint for the next run.
+
 
 ### Operational Notes
 The serial section seems to be sensivite to the voltage levels used on the interface of the
