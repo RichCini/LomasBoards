@@ -56,13 +56,13 @@ boot (non-standard MS-DOS boot sector) and are 320k in size (8 sectors).
 
 ## Thunder 186 Redux 
 ### Status - version 1.0-006 FINAL
-The serial headers were changed back to the 2x10 used on the prototype which then requires
-using a DB25F on the cable, consistent with the original. Second change was to correct the
-footprint on C9.
+Three minor changes: the serial headers were changed back to the 2x10 used on the prototype
+(which then requires using a DB25F cable), consistent with the original; corrected the
+footprint on C9 to a polarized tantalum; final change was to rotate the CPU 180 degrees
+to have the chip legend oriented properly.
 
 ### Status - version 1.0-005 Working
-Works! PC-DOS 3 reports 256k of RAM which is correct. Serial ports work, trying to
-test the parallel port. 
+Works! PC-DOS 3 reports 256k of RAM which is correct. 
 
 There is one errata. Capacitor C9 in the reset circuit should be 22uF/16v polarized; it
 is misdrawn on the original schematic. A regular tantalum fits fine in this space. The
