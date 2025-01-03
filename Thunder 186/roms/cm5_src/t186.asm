@@ -1,9 +1,39 @@
 ; Lomas Thunder 186 specific code
 ;
 
+;
+; Board-specific Registers.
+;
+; These blocks are decoded with a 74LS138. Blocks B0h,
+; E0h, and F0h are unused.
+;
+; i8255 PPI. Note that the four registers are addresses
+; using A1/A2 rather than A0/A1, meaning the ports are
+; on the even bytes.
+PPIBASE		equ	0D0h
+printer_port	equ	PPIBASE+0	; port A
+PPI_B		equ	PPIBASE+2	; port B
+PPI_C		equ	PPIBASE+4	; port C
+PPI_CR		equ	PPIBASE+6	; control register
+
+; 8251A, ports 0 and 1. Similar to the PPI, A1 is used to
+; select the register.
+ACIA0BASE	equ	0C0h		; J2 = COM2
+ACIA1BASE	equ	080h		; J1 = COM1
+DATAP		equ	0
+CTRLP		equ	2
+
+; Floppy
+FDCBASE		equ	090h
+FDCDMA		equ	0A0h
+FDSTAT		EQU	FDCBASE		;STATUS REGISTER
+FDDATA		EQU	FDCBASE+2	;DATA REGISTER
+FDDMA		EQU	FDCBASE+4	;DMA ADDRESS (WHEN WRITE)
+DFINTS		EQU	FDCBASE+4	;STATUS REGISTER (WHEN READ)
+
+
 ; 80186 Peripheral Control Registers
 ; At reset, this block starts at 0FF00h in I/O space
-
 PCRBASE	equ	0ff00h
 ; Interrupts
 ICR	equ	PCRBASE+020h
@@ -21,8 +51,8 @@ D0CR	equ	014h	; DMA0 control register
 D1CR	equ	016h	; DMA1 control register
 INT0CR	equ	018h	; INT0 control register
 INT1CR	equ	01ah	; INT1 control register
-INT2CR	equ	018h	; INT2 control register
-INT3CR	equ	01ah	; INT3 control register
+INT2CR	equ	01ch	; INT2 control register
+INT3CR	equ	01eh	; INT3 control register
 ; Timers
 TM0CR	equ	PCRBASE+050h
 TM1CR	equ	PCRBASE+058h

@@ -1,4 +1,5 @@
-; Lomas Color Magic specific code
+; Lomas Color Magic specific equates. These are the
+; IBM/PC-compatible port addresses.
 ;
 C5TIMER0	equ	40h
 C5TIMER1	equ	41h

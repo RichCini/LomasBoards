@@ -2,6 +2,16 @@ TITLE LDP THUNDER REV 1.0 10/21/85 Color Magic ROM
 PAGE  59,132
 ;option M510	; Assume MASM 5.1 if using MASM 6.11
 
+;
+; This is an IBM/PC-compatible BIOS ROM for installation in 
+; the Thunder 186 single-board computer when used with the
+; Color Magic CGA video board. By default, the Thunder 186
+; comes with a conventional monitor ROM -- I would guess that
+; this ROM was included with the purchase of the Color Magic,
+; possibly as an extra-cost option since the Color Magic
+; could be used in any other PC-capable S100 setup.
+;
+
 ; NOTE: The Ampro LittleBoard 186 can boot from the SCSI channel
 ;	so this might be an option... 
 ;
@@ -25,7 +35,7 @@ PAGE  59,132
 ;
 ; There are several references to ports D0-D6 which are 
 ; not documented. This could be the 8255 (config switches
-; and printer port). Since the CM5 relies on the Color
+; and printer port). Since the CM5 ROM is for the Color
 ; Magic, I doubt the baud rate switches would be important.
 ;
 ; SCSI IRQ 3, port 310h, D8000h
@@ -104,12 +114,12 @@ Int1Fv		equ	7Ch			; (0000:007C=5E9h)   1F video graphic table
 
 IPLLOC		equ	7C00h			;*(0000:7C00=0)	boot location
 data_49e	equ	0			;*(1000:0000=75h)
-data_50e	equ	3FEh			;*(1040:03FE=3)
-; Outside of ROM address
+data_50e	equ	3FEh			;*(1040:03FE=3)	COM1 block? Count?
+; Outside of ROM address; likely just 8K address increments
 data_121e	equ	2000h			;*(A.2000=0)
 data_122e	equ	2001h			;*(A.2001=0)
-; Also odd location
-data_123e	equ	49h			; (C000:0049=0)
+; Also odd location.
+;data_123e	equ	49h			; (C000:0049=0) ds:49 is CRT mode
 
 ; The Lomas BIOS doesn't produce error codes, but these might be useful.
 ER_BIOS equ     01h             ; Bad ROM bios checksum, patch last byte
@@ -305,7 +315,6 @@ endm
 
 
 ; this code sits at F:E000
-;	org	0E000h	
 	org	0		; zero-start ROM
 banner: 	db	"LDP THUNDER REV 1.0 10/21/85"
 ;	IF	SCSI
@@ -313,7 +322,7 @@ banner: 	db	"LDP THUNDER REV 1.0 10/21/85"
 ;	ENDIF
 		db	0ah, 0dh, 0
 
-; Continues from CPU initialization code at 1C00h initializes the 80186
+; Continues from CPU initialization code at 1C00h that initializes the 80186
 ; internal registers. The expansion ROM call has to occur after the hardware
 ; initializes but before video.
 COLD2:
@@ -659,10 +668,10 @@ loc_16:						;  xref A.0251
  		push	ax
  		mov	bl,32h			; '2'
  		xor	cx,cx			; Zero register
- 		out	0D0h,al		; port 0D0h, DMA-2 command reg
+ 		out	0D0h,al			; port 0D0h
 
 locloop_17:					;  xref A.026E, 0272
- 		in	al,0D2h		; port 0D2h ??I/O Non-standard
+ 		in	al,0D2h			; port 0D2h
  		test	al,20h			; ' '
  		jz	loc_18			; Jump if zero
  		loop	locloop_17		; Loop if cx > 0
@@ -674,42 +683,42 @@ locloop_17:					;  xref A.026E, 0272
 ;a.0279		
 loc_18:						;  xref A.026C
  		mov	al,1
- 		out	0D6h,al			; port 0D6h, DMA-2 mode reg
+ 		out	0D6h,al			; port 0D6h
  		push	ax
  		pop	ax
  		mov	al,0
- 		out	0D6h,al			; port 0D6h, DMA-2 mode reg
+ 		out	0D6h,al			; port 0D6h
  		push	ax
  		pop	ax
  		mov	al,1
- 		out	0D6h,al			; port 0D6h, DMA-2 mode reg
+ 		out	0D6h,al			; port 0D6h
  		pop	ax
  		jmp	short loc_20		; (02AB)
 ;a.028c
 loc_19:						;  xref A.0255
  		push	ax
  		mov	al,1
- 		out	0D6h,al			; port 0D6h, DMA-2 mode reg
+ 		out	0D6h,al			; port 0D6h
  		push	ax
  		pop	ax
  		mov	al,3
- 		out	0D6h,al			; port 0D6h, DMA-2 mode reg
+ 		out	0D6h,al			; port 0D6h
  		push	ax
  		pop	ax
  		mov	al,6
- 		out	0D6h,al			; port 0D6h, DMA-2 mode reg
+ 		out	0D6h,al			; port 0D6h
  		push	ax
  		pop	ax
  		mov	al,4
- 		out	0D6h,al			; port 0D6h, DMA-2 mode reg
+ 		out	0D6h,al			; port 0D6h
  		call	sub_17			; (08C3)
  		mov	al,5
- 		out	0D6h,al			; port 0D6h, DMA-2 mode reg
+ 		out	0D6h,al			; port 0D6h
  		pop	ax
 ;a.02ab		
 loc_20:						;  xref A.0259, 028A
  		push	ax
- 		in	al,0D2h			; port 0D2h ??I/O Non-standard
+ 		in	al,0D2h			; port 
  		mov	bl,10h
  		test	al,20h			; ' '
  		jz	loc_21			; Jump if zero
@@ -737,6 +746,7 @@ sub_4		proc	near
  		mov	ds,ax
 ; should code bb 00 00
  		mov	bx,offset rs232_port_1		; (0040:0000=0F8h)
+; sets serial ports to port 80h (com1) and 0c0h (com2)
  		mov	ax,80h
  		mov	[bx],ax
  		mov	ax,0C0h
@@ -784,6 +794,7 @@ loc_24:						;  xref A.02F7, 030D, 03C5, 03DB
  		pop	dx
  		pop	ds
  		iret				; Interrupt return
+
 loc_25:						;  xref A.02FB
  		push	ax
  		mov	ah,42h			; 'B'
@@ -824,11 +835,11 @@ locloop_27:					;  xref A.0345
  		push	dx
  		cmp	dx,82h
  		ja	loc_28			; Jump if above
+; set timer register for right UART
  		mov	dx,0FF5Ah		;PCRBASE+T1CR+TMRCA
  		jmp	short loc_29		; (0368)
 loc_28:						;  xref A.035E
  		mov	dx,0FF52h		;PCRBASE+T0CR+TMRCA
-
 loc_29:						;  xref A.0363
  		mov	ah,0
  		shl	ax,1			; Shift w/zeros fill
@@ -836,25 +847,30 @@ loc_29:						;  xref A.0363
  		mov	bx,offset data_81	; (A.038B=38h)
  		add	bx,ax
  		mov	ax,cs:[bx]
- 		out	dx,ax			; port 0FF52h ??I/O Non-standard
- 		add	dx,2			;PCRBASE+T0CR+TMRCA
+ 		out	dx,ax			; port 0FF52h PCRBASE+T0CR+TMRCA
+ 		add	dx,2			; go to count register B
  		add	bx,2
  		mov	ax,cs:[bx]
  		call	sub_17			; (08C3)
- 		out	dx,ax			; port 0FF54h ??I/O Non-standard
+ 		out	dx,ax			; port 0FF54h
  		pop	dx			; PCRBASE+T0CR+TMRCB
- 		sub	dx,2
+ 		sub	dx,2			; back to CRA?
  		jmp	loc_47			; (0454)
 
-; Int14 parameters?
+; parameters to program internal timers? Read as words.
 ;a.038b
 data_81:						; xref A.036E
-     		db	 38h, 02h, 38h, 02h,0A1h, 01h,0A1h
-     		db	 01h,0D0h, 00h,0D1h, 00h, 68h
-     		db	 00h, 68h, 00h, 34h, 00h, 34h
-     		db	 00h, 1Ah, 00h, 1Ah, 00h, 0Dh
-     		db	 00h, 0Dh, 00h, 06h, 00h, 07h
- 		db	 00h
+;     		db	 38h, 02h, 38h, 02h,0A1h, 01h,0A1h
+;     		db	 01h,0D0h, 00h,0D1h, 00h, 68h
+;     		db	 00h, 68h, 00h, 34h, 00h, 34h
+;     		db	 00h, 1Ah, 00h, 1Ah, 00h, 0Dh
+;     		db	 00h, 0Dh, 00h, 06h, 00h, 07h
+; 		db	 00h
+		dw	0238h, 0238h, 01a1h, 01a1h
+		dw	00d0h, 00d1h, 0068h, 0068h
+		dw	0034h, 0034h, 001ah, 001ah
+		dw	000dh, 000dh, 0006h, 0007h
+
 
 loc_30:						;  xref A.0301
  		push	ax
@@ -926,7 +942,7 @@ loc_38:						;  xref A.03F8, 040F
  		jmp	short loc_37		; (0400)
 loc_39:						;  xref A.0408
  		call	sub_5			; (0420)
- 		and	ah,1Eh
+ 		and	ah,00011110b		;1Eh
  		sub	dx,2
  		in	al,dx			; port 0, DMA-1 bas&add ch 0
  		jmp	loc_24			; (0312)
@@ -990,6 +1006,7 @@ loc_48:						;  xref A.0461
  ;         Called from:   A.017B
 ;===============================================================================
 ;a.0468
+; delay loop CX=# of msec?
 sub_6		proc	near
 loc_49:						;  xref A.0470
  		sti				; Enable interrupts
@@ -1017,7 +1034,7 @@ sub_7		proc	near
  		push	ds
  		xor	ax,ax			; Zero register
  		mov	ds,ax
- 		mov	ax,offset DefIRET		; default IRET 596h
+ 		mov	ax,offset DefIRET	; default IRET 596h
  		mov	ds:Int18v,ax		; (0000:0060=0CD00h)
  		mov	ds:Int19v,ax		; (0000:0064=0CC60h)
  		mov	ds:Int18v+2,cs		; (0000:0062=0F000h)
@@ -1034,6 +1051,26 @@ sub_7		proc	near
  		mov	ds:Int11v+2,cs		; (0000:0046=0F000h)
  		mov	ax,40h
  		mov	ds,ax
+; equipment list - assumes:
+;	01 0 0 010 0 01 10 11 0 1 = 446Dh
+;	LP X G SER X FD VM KM X B
+;
+;	BIT 15,14 = NUMBER OF PRINTERS ATTACHED
+;	BIT 13 NOT USED
+;	BIT 12 = GAME I/O ATTACHED
+;	BIT 11,10,9 = NUMBER OF RS232 CARDS ATTACHED
+;	BIT 8 UNUSED
+;	BIT 7,6 = NUMBER OF DISKETTE DRIVES
+;		00=1, 01=2, 10-3, 11=4 ONLY IF BIT 0 = 1
+;	BIT 5,4 = INITIAL VIDEO MODE
+;			00 - UNUSED
+;			01 - 40X25 BW USING COLOR CARD
+;			10 - 80X25 BW USING COLOR CARD
+;			11 - 80X25 BW USING BW CARD
+;	BIT 3,2 = PLANAR RAM SIZE (00=16K,01=32K,10=48K,11=64K)
+;	BIT 1 NOT USED
+;	BIT 0 = IPL FROM DISKETTE -- THIS BIT INDICATES THAT THERE ARE DISKETTE
+;		DRIVES ON THE SYSTEM
  		mov	ax,446Dh		; 01000100 / 01101101
  		mov	ds:equip_bits,ax	; (0040:0010=4467h)
  		pop	ds
@@ -1374,14 +1411,14 @@ loc_74:						;  xref A.065A
  		call	GetpDPB			; (0834)
  		mov	bx,3
  		call	GetpDPB			; (0834)
- 		mov	byte ptr ds:[41h],0	; (A.0041=0B9h)
- 		mov	byte ptr ds:[3Eh],0	; (A.003E=0FBh)
- 		mov	byte ptr ds:[3Fh],0	; (A.003F=0F3h)
+ 		mov	byte ptr ds:[dsk_ret_code],0	; (A.0041=0B9h)
+ 		mov	byte ptr ds:[dsk_recal_stat],0	; (A.003E=0FBh)
+ 		mov	byte ptr ds:[dsk_motor_stat],0	; (A.003F=0F3h)
  		call	sub_26			; (0A9E)
  		call	sub_19			; (09AD)
  		retn
 loc_75:						;  xref A.0660
- 		mov	al,byte ptr ds:[41h]	; (A.0041=0B9h)
+ 		mov	al,byte ptr ds:[dsk_ret_code]	; (A.0041=0B9h)
  		retn
 ;a.06c0
 loc_76:						;  xref A.0671, 06CC
@@ -1417,7 +1454,7 @@ loc_79:						;  xref A.075C
  		call	GetpDPB			; (0834)
  		mov	bx,0Fh
  		call	GetpDPB			; (0834)
- 		mov	ax,word ptr ds:[67h]	; (A.0067=8C00h)
+ 		mov	ax,word ptr ds:[gen_io_ptr]	; (A.0067=8C00h)
  		mov	dx,0FFDAh		;PCRBASE+DMA1+DMACW
  		out	dx,ax			; port 0FFDAh ??I/O Non-standard
  		mov	bx,11h
@@ -1426,17 +1463,17 @@ loc_79:						;  xref A.075C
  		db	90h
 ;a.0714
 loc_80:						;  xref A.0678
- 		or	byte ptr ds:[3Fh],80h	; (A.003F=0F3h)
+ 		or	byte ptr ds:[dsk_motor_stat],80h	; (A.003F=0F3h)
  		call	sub_18			; (08E7)
  		mov	ah,45h			; 'E'
 loc_81:						;  xref A.06C5, 06F0
  		jnc	loc_82			; Jump if carry=0
- 		mov	byte ptr ds:[41h],9	; (A.0041=0B9h)
+ 		mov	byte ptr ds:[dsk_ret_code],9	; (A.0041=0B9h)
  		mov	al,0
  		retn
 loc_82:						;  xref A.071E
  		call	sub_26			; (0A9E)
- 		and	byte ptr ds:[3Eh],7Fh	; (A.003E=0FBh)
+ 		and	byte ptr ds:[dsk_recal_stat],7Fh	; (A.003E=0FBh)
  		push	ax
  		call	sub_20			; (09B6)
  		call	sub_24			; (0A59)
@@ -1473,7 +1510,7 @@ loc_84:						;  xref A.075A
  		call	GetpDPB			; (0834)
  		mov	bx,0Bh
  		call	GetpDPB			; (0834)
- 		mov	ax,word ptr ds:[67h]	; (A.0067=8C00h)
+ 		mov	ax,word ptr ds:[gen_io_ptr]	; (A.0067=8C00h)
  		mov	dx,0FFDAh		;PCRBASE+DMA1+DMACW
  		out	dx,ax			; port 0FFDAh ??I/O Non-standard
  		mov	bx,0Dh
@@ -1517,7 +1554,7 @@ loc_87:						;  xref A.07A4
  		mov	ah,20h			; ' '
 loc_88:						;  xref A.07AB, 07B3, 07B9, 07C1
  						;            07C7, 07CD
- 		or	byte ptr ds:[41h],ah	; (A.0041=0B9h)
+ 		or	byte ptr ds:[dsk_ret_code],ah	; (A.0041=0B9h)
  		call	sub_27			; (0AB2)
 
 loc_ret_89:					;  xref A.0797
@@ -1578,7 +1615,7 @@ locloop_93:					;  xref A.0814
  		loop	locloop_93		; Loop if cx > 0
 
 loc_94:						;  xref A.0828
- 		or	byte ptr ds:[41h],80h	; (A.0041=0B9h)
+ 		or	byte ptr ds:[dsk_ret_code],80h	; (A.0041=0B9h)
  		pop	cx
  		pop	dx
  		stc				; Set carry flag
@@ -1638,9 +1675,9 @@ sub_15		proc	near
  		mov	cl,dl
  		rol	al,cl			; Rotate
  		pop	cx
- 		test	al,byte ptr ds:[3Eh]	; (A.003E=0FBh)
+ 		test	al,byte ptr ds:[dsk_recal_stat]	; (A.003E=0FBh)
  		jnz	loc_98			; Jump if not zero
- 		or	byte ptr ds:[3Eh],al	; (A.003E=0FBh)
+ 		or	byte ptr ds:[dsk_recal_stat],al	; (A.003E=0FBh)
  		mov	ah,7
  		call	sub_13			; (0808)
  		mov	ah,[bp]
@@ -1868,7 +1905,7 @@ loc_112:
  		call	sub_13			; (0808)
  		call	sub_22			; (0A08)
  		jc	loc_ret_112		; Jump if carry Set
- 		mov	al,byte ptr ds:[42h]	; (A.0042=0)
+ 		mov	al,byte ptr ds:[nec_stat]	; (A.0042=0)
  		and	al,60h			; '`'
  		cmp	al,60h			; '`'
  		je	loc_113			; Jump if equal
@@ -1877,7 +1914,7 @@ loc_112:
 loc_ret_112:					;  xref A.098F, 0999
  		retn
 loc_113:					;  xref A.09A2
- 		or	byte ptr ds:[41h],40h	; (A.0041=0B9h) '@'
+ 		or	byte ptr ds:[dsk_ret_code],40h	; (A.0041=0B9h) '@'
  		stc				; Set carry flag
  		retn
 
@@ -1893,7 +1930,7 @@ sub_19		proc	near
  		push	ax
  		push	dx
  		mov	al,5
- 		out	0D6h,al			; port 0D6h, DMA-2 mode reg
+ 		out	0D6h,al			; port 0D6h
  		pop	dx
  		pop	ax
  		retn
@@ -1912,7 +1949,7 @@ sub_20		proc	near
  		push	ax
  		push	dx
  		mov	al,4
- 		out	0D6h,al			; port 0D6h, DMA-2 mode reg
+ 		out	0D6h,al			; port 0D6h
  		pop	dx
  		pop	ax
  		retn
@@ -1943,7 +1980,7 @@ sub_21		proc	near
  		xor	cx,cx			; Zero register
 
 locloop_114:					;  xref A.09DA, 09DE
- 		test	byte ptr ds:[3Eh],80h	; (A.003E=0FBh)
+ 		test	byte ptr ds:[dsk_recal_stat],80h	; (A.003E=0FBh)
  		jnz	loc_115			; Jump if not zero
  		loop	locloop_114		; Loop if cx > 0
 
@@ -1951,8 +1988,8 @@ locloop_114:					;  xref A.09DA, 09DE
  		jnz	locloop_114		; Jump if not zero
  		cli				; Disable interrupts
  		call	sub_23			; (0A4C)
- 		or	byte ptr ds:[41h],80h	; (A.0041=0B9h)
- 		and	byte ptr ds:[3Eh],7Fh	; (A.003E=0FBh)
+ 		or	byte ptr ds:[dsk_ret_code],80h	; (A.0041=0B9h)
+ 		and	byte ptr ds:[dsk_recal_stat],7Fh	; (A.003E=0FBh)
  		mov	ax,8
  		mov	dx,0FF36h		;PCRBASE+ICR+D1CR
  		out	dx,ax			; port 0FF36h ??I/O Non-standard
@@ -2011,7 +2048,7 @@ loc_120:					;  xref A.0A19
  		test	al,40h			; '@'
  		jnz	loc_122			; Jump if not zero
 loc_121:					;  xref A.0A46
- 		or	byte ptr ds:[41h],20h	; (A.0041=0B9h) ' '
+ 		or	byte ptr ds:[dsk_ret_code],20h	; (A.0041=0B9h) ' '
  		jmp	short loc_119		; (0A1D)
 loc_122:					;  xref A.0A25
  		mov	dx,92h
@@ -2050,11 +2087,11 @@ sub_22		endp
 sub_23		proc	near
  		push	ax
  		mov	al,0Dh
- 		out	0D6h,al			; port 0D6h, DMA-2 mode reg
+ 		out	0D6h,al			; port 0D6h
  		push	ax
  		pop	ax
  		mov	al,0Ch
- 		out	0D6h,al			; port 0D6h, DMA-2 mode reg
+ 		out	0D6h,al			; port 0D6h
  		pop	ax
  		retn
 sub_23		endp
@@ -2086,7 +2123,7 @@ locloop_125:					;  xref A.0A73, 0A77
 
  		dec	bl
  		jnz	locloop_125		; Jump if not zero
- 		or	byte ptr ds:[41h],80h	; (A.0041=0B9h)
+ 		or	byte ptr ds:[dsk_ret_code],80h	; (A.0041=0B9h)
  		stc				; Set carry flag
  		jmp	short loc_127		; (0A82)
 loc_126:					;  xref A.0A71
@@ -2156,9 +2193,9 @@ sub_26		endp
 ;===============================================================================
 ;a.0ab2
 sub_27		proc	near
- 		mov	al,byte ptr ds:[45h]	; (A.0045=0AFh)
+ 		mov	al,byte ptr ds:[nec_stat+3]	; (A.0045=0AFh) part of NEC status bytes
  		cmp	al,ch
- 		mov	al,byte ptr ds:[47h]	; (A.0047=6)
+ 		mov	al,byte ptr ds:[nec_stat+5]	; (A.0047=6)
  		jz	loc_132			; Jump if zero
  		mov	bx,8
  		call	GetpDPB			; (0834)
@@ -2253,26 +2290,26 @@ loc_134:					;  xref A.0B31, 0B49
  		sti				; Enable interrupts
  		nop
  		cli				; Disable interrupts
- 		mov	bx,word ptr ds:[1Ah]	; (A.001A=3538h)
- 		cmp	bx,word ptr ds:[1Ch]	; (A.001C=0D0Ah)
+ 		mov	bx,word ptr ds:[keybd_q_head]	; (A.001A=3538h)
+ 		cmp	bx,word ptr ds:[keybd_q_tail]	; (A.001C=0D0Ah)
  		je	loc_134			; Jump if equal
  		mov	ax,[bx]
  		call	sub_30			; (0BD3)
- 		mov	word ptr ds:[1Ah],bx	; (A.001A=3538h)
+ 		mov	word ptr ds:[keybd_q_head],bx	; (A.001A=3538h)
  		pop	bx
  		pop	ds
  		iret				; Interrupt return
 loc_135:					;  xref A.0B35
  		cli				; Disable interrupts
- 		mov	bx,word ptr ds:[1Ah]	; (A.001A=3538h)
- 		cmp	bx,word ptr ds:[1Ch]	; (A.001C=0D0Ah)
+ 		mov	bx,word ptr ds:[keybd_q_head]	; (A.001A=3538h)
+ 		cmp	bx,word ptr ds:[keybd_q_tail]	; (A.001C=0D0Ah)
  		mov	ax,[bx]
  		sti				; Enable interrupts
  		pop	bx
  		pop	ds
  		retf	2			; Return far
 loc_136:					;  xref A.0B39
- 		mov	al,byte ptr ds:[17h]	; (A.0017=32h)
+ 		mov	al,byte ptr ds:[keybd_flags_1]	; (A.0017=32h)
  		pop	bx
  		pop	ds
  		iret				; Interrupt return
@@ -2361,7 +2398,7 @@ sub_30		endp
 data_84:	;db	52h, 3Ah, 45h, 46h
 		db	INS_KEY, CAPS_KEY, NUM_KEY, SCROLL_KEY
 ;		db	38h, 1Dh, 2Ah, 36h
-		db	ALT_KEY, CTL_KEY, KEFT_KEY, RIGHT_KEY
+		db	ALT_KEY, CTL_KEY, LEFT_KEY, RIGHT_KEY
 
 ; Shift mask table
 ;a.0be9
@@ -2506,34 +2543,34 @@ loc_142:					;  xref A.0D2A
  		jnz	loc_149			; Jump if not zero
  		cmp	ah,10h
  		jae	loc_144			; Jump if above or =
- 		or	byte ptr ds:[17h],ah	; (A.0017=32h)
+ 		or	byte ptr ds:[keybd_flags_1],ah	; (A.0017=32h)
  		jmp	loc_152			; (0DCB)
 loc_144:					;  xref A.0D3F
- 		test	byte ptr ds:[17h],4	; (A.0017=32h)
+ 		test	byte ptr ds:[keybd_flags_1],4	; (A.0017=32h)
  		jnz	loc_151			; Jump if not zero
  		cmp	al,52h			; 'R'
  		jne	loc_148			; Jump if not equal
- 		test	byte ptr ds:[17h],8	; (A.0017=32h)
+ 		test	byte ptr ds:[keybd_flags_1],8	; (A.0017=32h)
  		jz	loc_145			; Jump if zero
  		jmp	short loc_151		; (0DB7)
  		db	90h
 ;a.0d5d
 loc_145:					;  xref A.0D58
- 		test	byte ptr ds:[17h],20h	; (A.0017=32h) ' '
+ 		test	byte ptr ds:[keybd_flags_1],20h	; (A.0017=32h) ' '
  		jnz	loc_147			; Jump if not zero
- 		test	byte ptr ds:[17h],3	; (A.0017=32h)
+ 		test	byte ptr ds:[keybd_flags_1],3	; (A.0017=32h)
  		jz	loc_148			; Jump if zero
 loc_146:					;  xref A.0D76
  		mov	ax,5230h
  		jmp	loc_181			; (0F34)
 loc_147:					;  xref A.0D62
- 		test	byte ptr ds:[17h],3	; (A.0017=32h)
+ 		test	byte ptr ds:[keybd_flags_1],3	; (A.0017=32h)
  		jz	loc_146			; Jump if zero
 loc_148:					;  xref A.0D51, 0D69
- 		test	ah,byte ptr ds:[18h]	; (A.0018=31h)
+ 		test	ah,byte ptr ds:[keybd_flags_2]	; (A.0018=31h)
  		jnz	loc_152			; Jump if not zero
- 		or	byte ptr ds:[18h],ah	; (A.0018=31h)
- 		xor	byte ptr ds:[17h],ah	; (A.0017=32h)
+ 		or	byte ptr ds:[keybd_flags_2],ah	; (A.0018=31h)
+ 		xor	byte ptr ds:[keybd_flags_1],ah	; (A.0017=32h)
  		cmp	al,52h			; 'R'
  		jne	loc_152			; Jump if not equal
  		mov	ax,5200h
@@ -2542,7 +2579,7 @@ loc_149:					;  xref A.0D3A
  		cmp	ah,10h
  		jae	loc_150			; Jump if above or =
  		not	ah
- 		and	byte ptr ds:[17h],ah	; (A.0017=32h)
+ 		and	byte ptr ds:[keybd_flags_1],ah	; (A.0017=32h)
  		cmp	al,0B8h
  		jne	loc_152			; Jump if not equal
  		mov	al,byte ptr ds:[19h]	; (A.0019=2Fh)
@@ -2554,16 +2591,16 @@ loc_149:					;  xref A.0D3A
 ;a.0daf
 loc_150:					;  xref A.0D93
  		not	ah
- 		and	byte ptr ds:[18h],ah	; (A.0018=31h)
+ 		and	byte ptr ds:[keybd_flags_2],ah	; (A.0018=31h)
  		jmp	short loc_152		; (0DCB)
 loc_151:					;  xref A.0D2C, 0D4D, 0D5A
  		cmp	al,80h
  		jae	loc_152			; Jump if above or =
- 		test	byte ptr ds:[18h],8	; (A.0018=31h)
+ 		test	byte ptr ds:[keybd_flags_2],8	; (A.0018=31h)
  		jz	loc_153			; Jump if zero
  		cmp	al,45h			; 'E'
  		je	loc_152			; Jump if equal
- 		and	byte ptr ds:[18h],0F7h	; (A.0018=31h)
+ 		and	byte ptr ds:[keybd_flags_2],0F7h	; (A.0018=31h)
 loc_152:					;  xref A.0D45, 0D7C, 0D88, 0D9D
  						;            0DAA, 0DB5, 0DB9, 0DC4
  						;            0E39, 0E60, 0EA8, 0EDE
@@ -2581,11 +2618,11 @@ loc_152:					;  xref A.0D45, 0D7C, 0D88, 0D9D
 ; Ctrl-Alt-Del restart?
 ;a.0dd4
 loc_153:					;  xref A.0DC0
- 		test	byte ptr ds:[17h],8	; (A.0017=32h)
+ 		test	byte ptr ds:[keybd_flags_1],8	; (A.0017=32h)
  		jnz	loc_154			; Jump if not zero
  		jmp	loc_162			; (0E6D)
 loc_154:					;  xref A.0DD9
- 		test	byte ptr ds:[17h],4	; (A.0017=32h)
+ 		test	byte ptr ds:[keybd_flags_1],4	; (A.0017=32h)
  		jz	loc_155			; Jump if zero
  		cmp	al,53h			; 'S'
  		jne	loc_155			; Jump if not equal
@@ -2644,13 +2681,13 @@ loc_161:					;  xref A.0E5E
  		mov	bx,0CC1h
  		jmp	loc_187			; (0F82)
 loc_162:					;  xref A.0DDB
- 		test	byte ptr ds:[17h],4	; (A.0017=32h)
+ 		test	byte ptr ds:[keybd_flags_1],4	; (A.0017=32h)
  		jz	loc_168			; Jump if zero
  		cmp	al,46h			; 'F'
  		jne	loc_163			; Jump if not equal
  		mov	bx,1Eh
- 		mov	word ptr ds:[1Ah],bx	; (A.001A=3538h)
- 		mov	word ptr ds:[1Ch],bx	; (A.001C=0D0Ah)
+ 		mov	word ptr ds:[keybd_q_head],bx	; (A.001A=3538h)
+ 		mov	word ptr ds:[keybd_q_tail],bx	; (A.001C=0D0Ah)
  		mov	byte ptr ds:[71h],80h	; (A.0071=0)
  		int	1Bh			; Keyboard break (cntrl-break)
  		mov	ax,0
@@ -2658,13 +2695,13 @@ loc_162:					;  xref A.0DDB
 loc_163:					;  xref A.0E76
  		cmp	al,45h			; 'E'
  		jne	loc_165			; Jump if not equal
- 		or	byte ptr ds:[18h],8	; (A.0018=31h)
+ 		or	byte ptr ds:[keybd_flags_2],8	; (A.0018=31h)
  		mov	dx,3D8h
  		mov	al,byte ptr ds:[65h]	; (A.0065=0A3h)
  		out	dx,al			; port 3D8h, CGA video control
  		sti				; Enable interrupts
 loc_164:					;  xref A.0EA6
- 		test	byte ptr ds:[18h],8	; (A.0018=31h)
+ 		test	byte ptr ds:[keybd_flags_2],8	; (A.0018=31h)
  		jnz	loc_164			; Jump if not zero
  		jmp	loc_152			; (0DCB)
 ;a.0eab
@@ -2685,7 +2722,7 @@ loc_167:					;  xref A.0EBA
 loc_168:					;  xref A.0E72
  		cmp	al,47h			; 'G'
  		jae	loc_172			; Jump if above or =
- 		test	byte ptr ds:[17h],3	; (A.0017=32h)
+ 		test	byte ptr ds:[keybd_flags_1],3	; (A.0017=32h)
  		jz	loc_178			; Jump if zero
  		cmp	al,0Fh
  		jne	loc_169			; Jump if not equal
@@ -2706,9 +2743,9 @@ loc_171:					;  xref A.0EE3
  		mov	bx,0C7Dh
  		jmp	short loc_180		; (0F30)
 loc_172:					;  xref A.0EC7
- 		test	byte ptr ds:[17h],20h	; (A.0017=32h) ' '
+ 		test	byte ptr ds:[keybd_flags_1],20h	; (A.0017=32h) ' '
  		jnz	loc_176			; Jump if not zero
- 		test	byte ptr ds:[17h],3	; (A.0017=32h)
+ 		test	byte ptr ds:[keybd_flags_1],3	; (A.0017=32h)
  		jnz	loc_177			; Jump if not zero
 loc_173:					;  xref A.0F1C
  		cmp	al,4Ah			; 'J'
@@ -2726,7 +2763,7 @@ loc_175:					;  xref A.0F04
  		mov	ax,4E2Bh
  		jmp	short loc_181		; (0F34)
 loc_176:					;  xref A.0EF5
- 		test	byte ptr ds:[17h],3	; (A.0017=32h)
+ 		test	byte ptr ds:[keybd_flags_1],3	; (A.0017=32h)
  		jnz	loc_173			; Jump if not zero
 loc_177:					;  xref A.0EFC
  		sub	al,46h			; 'F'
@@ -2751,9 +2788,9 @@ loc_181:					;  xref A.0D6E, 0D8D, 0E1C, 0E49
  		cmp	ah,0FFh
  		je	loc_183			; Jump if equal
 loc_182:					;  xref A.0DAC
- 		test	byte ptr ds:[17h],40h	; (A.0017=32h) '@'
+ 		test	byte ptr ds:[keybd_flags_1],40h	; (A.0017=32h) '@'
  		jz	loc_185			; Jump if zero
- 		test	byte ptr ds:[17h],3	; (A.0017=32h)
+ 		test	byte ptr ds:[keybd_flags_1],3	; (A.0017=32h)
  		jz	loc_184			; Jump if zero
  		cmp	al,41h			; 'A'
  		jb	loc_185			; Jump if below
@@ -2772,13 +2809,13 @@ loc_184:					;  xref A.0F49
 ;a.0f64
 loc_185:					;  xref A.0F42, 0F4D, 0F51, 0F55
  						;            0F5C, 0F60
- 		mov	bx,word ptr ds:[1Ch]	; (A.001C=0D0Ah)
+ 		mov	bx,word ptr ds:[keybd_q_tail]	; (A.001C=0D0Ah)
  		mov	si,bx
  		call	sub_30			; (0BD3)
- 		cmp	bx,word ptr ds:[1Ah]	; (A.001A=3538h)
+ 		cmp	bx,word ptr ds:[keybd_q_head]	; (A.001A=3538h)
  		je	loc_186			; Jump if equal
  		mov	[si],ax
- 		mov	word ptr ds:[1Ch],bx	; (A.001C=0D0Ah)
+ 		mov	word ptr ds:[keybd_q_tail],bx	; (A.001C=0D0Ah)
  		jmp	loc_152			; (0DCB)
 loc_186:					;  xref A.0F71
  		call	sub_31			; (0F8C)
@@ -3549,7 +3586,7 @@ loc_244:					;  xref A.1217
  		add	dx,101h
  		shl	dh,1			; Shift w/zeros fill
  		shl	dh,1			; Shift w/zeros fill
- 		cmp	byte ptr ds:[49h],6	; (A.0049=66h)
+ 		cmp	byte ptr ds:[video_mode],6	; (A.0049=66h)
  		jae	loc_245			; Jump if above or =
  		shl	dl,1			; Shift w/zeros fill
  		shl	di,1			; Shift w/zeros fill
@@ -3595,7 +3632,7 @@ loc_250:					;  xref A.129D
  		add	dx,101h
  		shl	dh,1			; Shift w/zeros fill
  		shl	dh,1			; Shift w/zeros fill
- 		cmp	byte ptr ds:[49h],6	; (A.0049=66h)
+ 		cmp	byte ptr ds:[video_mode],6	; (A.0049=66h)
  		jae	loc_251			; Jump if above or =
  		shl	dl,1			; Shift w/zeros fill
  		shl	di,1			; Shift w/zeros fill
@@ -3648,8 +3685,8 @@ sub_41		proc	near
  		rep	movsb			; Rep when cx >0 Mov [si] to es:[di]
  		pop	di
  		pop	si
- 		add	si,data_121e		; (A.2000=0)
- 		add	di,data_121e		; (A.2000=0)
+ 		add	si,2000h		;data_121e (A.2000=0)
+ 		add	di,2000h		;data_121e (A.2000=0)
  		push	si
  		push	di
  		mov	cl,dl
@@ -3671,7 +3708,7 @@ sub_42		proc	near
  		push	di
  		rep	stosb			; Rep when cx >0 Store al to es:[di]
  		pop	di
- 		add	di,data_121e		; (A.2000=0)
+ 		add	di,2000h		;data_121e (A.2000=0)
  		push	di
  		mov	cl,dl
  		rep	stosb			; Rep when cx >0 Store al to es:[di]
@@ -3705,7 +3742,7 @@ loc_258:					;  xref A.14BE
  		shl	ax,1			; Shift w/zeros fill
  		shl	ax,1			; Shift w/zeros fill
  		add	si,ax
- 		cmp	byte ptr ds:[49h],6	; (A.0049=66h)
+ 		cmp	byte ptr ds:[video_mode],6	; (A.0049=66h)
  		pop	ds
  		jc	loc_263			; Jump if carry Set
 
@@ -3721,7 +3758,7 @@ loc_260:					;  xref A.14F5
  		stosb				; Store al to es:[di]
  		lodsb				; String [si] to al
 loc_261:					;  xref A.1509
- 		mov	byte ptr es:data_120[di],al	; (A.1FFF=0E6h)
+ 		mov	byte ptr es:cksumb[di],al	; (A.1FFF=0E6h)
  		add	di,4Fh
  		dec	dh
  		jnz	loc_260			; Jump if not zero
@@ -3735,7 +3772,7 @@ loc_262:					;  xref A.14E7
  		xor	al,es:[di]
  		stosb				; Store al to es:[di]
  		lodsb				; String [si] to al
- 		xor	al,byte ptr es:data_120[di]	; (A.1FFF=0E6h)
+ 		xor	al,byte ptr es:cksumb[di]	; (A.1FFF=0E6h)
  		jmp	short loc_261		; (14EB)
 loc_263:					;  xref A.14DD
  		mov	dl,bl
@@ -3782,7 +3819,8 @@ loc_268:					;  xref A.12D6
  		mov	si,ax
  		sub	sp,8
  		mov	bp,sp
- 		cmp	byte ptr ds:data_123e,6	; (C000:0049=0)
+;***
+ 		cmp	byte ptr ds:video_mode,6	;data_123e,6 text 80x25/40x25
  		push	es
  		pop	ds
  		jc	loc_270			; Jump if carry Set
@@ -3805,7 +3843,7 @@ loc_270:					;  xref A.1570
  		mov	dh,4
 loc_271:					;  xref A.15A0
  		call	sub_45			; (161B)
- 		add	si,data_121e		; (A.2000=0)
+ 		add	si,2000h		; data_121e (A.2000=0)
  		call	sub_45			; (161B)
  		sub	si,1FB0h
  		dec	dh
@@ -3938,7 +3976,7 @@ sub_45		endp
 ;===============================================================================
 ;a.1638
 sub_46		proc	near
- 		mov	ax,word ptr ds:[50h]	; (A.0050=74AAh)
+ 		mov	ax,word ptr ds:[vid_curs_pos0]	; (A.0050=74AAh) cursor position
 
 ;���� External Entry into Subroutine ��������������������������������������
  ;
@@ -3948,7 +3986,7 @@ sub_47:
  		push	bx
  		mov	bx,ax
  		mov	al,ah
- 		mul	byte ptr ds:[4Ah]	; (A.004A=0) ax = data * al
+ 		mul	byte ptr ds:[video_columns]	; (A.004A=0) ax = data * al columns
  		shl	ax,1			; Shift w/zeros fill
  		shl	ax,1			; Shift w/zeros fill
  		sub	bh,bh
@@ -3992,7 +4030,7 @@ loc_281:					;  xref A.16C4
  		mov	bh,0
  		int	10h			; Video display   ah=functn 02h
  						;  set cursor location in dx
- 		mov	al,byte ptr ds:[49h]	; (A.0049=66h)
+ 		mov	al,byte ptr ds:[video_mode]	; (A.0049=66h)
  		cmp	al,4
  		jb	loc_282			; Jump if below
  		cmp	al,7
@@ -4007,7 +4045,7 @@ loc_283:					;  xref A.1690
  		mov	ax,601h
  		mov	cx,0
  		mov	dh,18h
- 		mov	dl,byte ptr ds:[4Ah]	; (A.004A=0)
+ 		mov	dl,byte ptr ds:[video_columns]	; (A.004A=0)
  		dec	dl
 loc_284:					;  xref A.16B0
  		int	10h			; Video display   ah=functn 02h
@@ -4437,16 +4475,17 @@ ADDBYT: ADD     AL,[BX]                         ; Add byte to checksum
 	RET                                     ;  ...and return
 ENDIF
 
-; In the Monitor v3.3, the SCSI code resides near the end of the ROM
+; In Monitor v3.3, the SCSI code resides near the end of the ROM
 ; before some RAM test code and the 186 init. It is included as a
-; library file but I don't know if that's a true library or just
-; a plain-text source file
-;
+; library file (i.e., "scsi.lib"), which I assume is a plain text
+; file.
 ;include "scsimon.asm"
 
 ;a.1c00
 	org	01c00h
 include "INIT186.ASM"
+;	dup 	(POWER - $) dup (0)
+; should end at 1fefh
 
 ;******************************************************************************
 ; Restart Address
@@ -4454,10 +4493,12 @@ include "INIT186.ASM"
 	ENTRY 	01FF0h			; this should put fill bytes before
 	PUBLIC	POWER
 POWER:	jmpf	0FE00h, COLDST
-;	db	10 dup (0)
+;	db	09 dup (0)
 ;******************************************************************************
-	ENTRY 	01FFFh
-data_120:
+	ENTRY 	01FFEh
+; NOTE: the original ROM did not have an equipment byte.
+	db	0FBh			; model byte for later XT
+cksumb:
 	db	0E6h			; checksum byte xref A.14EB, 1504
 code    ENDS
 END POWER
