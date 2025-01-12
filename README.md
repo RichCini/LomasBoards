@@ -55,7 +55,7 @@ boot (non-standard MS-DOS boot sector) and are 320k in size (8 sectors).
 
 
 ## Thunder 186 Redux 
-### Status - version 1.0-006 FINAL
+### Status - version 1.0-006 FINAL Working
 Three minor changes: the serial headers were changed back to the 2x10 used on the prototype
 (which then requires using a DB25F cable), consistent with the original; corrected the
 footprint on C9 to a polarized tantalum; final change was to rotate the CPU 180 degrees
@@ -87,7 +87,14 @@ Regarding DOS versions, I run PC/DOS rather than MS-DOS. Versions 3.0, 3.1, and 
 The I/O ports (serial and parallel) are at non-standard, non-PC-compatible addresses, so
 any software that uses them either has to (1) allow for defining custom ports, (2) read
 the BIOS data area in order to get the right port number, or (3) rely solely on BIOS
-calls to access the hardware.
+calls to access the hardware. 
+
+Similar to the serial port, the parallel port seems sensitive to what it's connected
+to. I used LPT-Capture (https://github.com/bkw777/LPT_Capture) which works with an old
+DOS laptop but will not work with this parallel port. I have gotten it working using a
+Practical Peripherals Serial/Parallel converter/buffer. Although I haven't tested it,
+it's possible the LPT-Capture would work on that port.
+
 
 
 
