@@ -5,7 +5,7 @@ supported by the Seattle Gazelle that I own. The board of course is pretty rare,
 so I'm redrawing it in KiCAD 6 to hopefully reproduce the board.
 
 ## Color Magic Redux 
-<img src="raw.githubusercontent.com/RichCini/LomasBoards/Color%20Magic/Finished%20Board.JPG?sanitize=true&raw=true" />
+<img src="https://raw.githubusercontent.com/RichCini/LomasBoards/Color%20Magic/Finished%20Board.JPG?sanitize=true&raw=true" />
 
 ### Status - version 1.1-005 FINAL
 1.1-005 is the final/release version. 004 had five tiepoints which were
@@ -54,7 +54,7 @@ the PALs for this project.
 
 
 ## Thunder 186 Redux 
-<img src="raw.githubusercontent.com/RichCini/LomasBoards/Thunder%20186/Thunder186_final.jpg?sanitize=true&raw=true" />
+<img src="https://raw.githubusercontent.com/RichCini/LomasBoards/Thunder%20186/Thunder186_final.jpg?sanitize=true&raw=true" />
 
 ### Status - version 1.0-006 FINAL
 Three minor changes: the serial headers were changed back to the 2x10 used on the prototype
