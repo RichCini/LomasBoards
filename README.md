@@ -5,6 +5,8 @@ supported by the Seattle Gazelle that I own. The board of course is pretty rare,
 so I'm redrawing it in KiCAD 6 to hopefully reproduce the board.
 
 ## Color Magic Redux 
+'raw.githubusercontent.com/RichCini/LomasBoards/Color%20Magic/Finished%20Board.JPG?sanitize=true&raw=true'
+
 ### Status - version 1.1-005 FINAL
 1.1-005 is the final/release version. 004 had five tiepoints which were
 permanently connected to their final spots. No other changes from 004 were made.
@@ -15,13 +17,9 @@ fine). Many thanks to Jonathan Haddox for lending me an original board set and
 providing extra help and encouragement. Thanks also go to Peter for decoding
 the PALs for this project.
 
-The first run of the board was defective (bad ground/Vcc), so a second run was
-made. This second version had some issues with jumper orientation, and several
-other small errors that had been discovered through a net-by-net continuity check
-against the original board. A third run was made (v004; no v003), which works
-fine. 
+The 5V voltage regulator is a TO-3 switching replacement from EzSBC. To preserve the
+footprint and schematic symbol, it's shown as an LM7805K.
 
-### Board Notes - version 1.1-004
 There are 4 tie points (TP2 - TP5) that need to be connected to either VCC 
 (TP3 - TP5) or the /BW (TP2) signal as applicable. A version 1.1-005 will be
 issued with these connections made permanently.
