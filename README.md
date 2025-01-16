@@ -7,7 +7,6 @@ so I'm redrawing it in KiCAD 6 to hopefully reproduce the board.
 ## Color Magic Redux 
 <img src="https://raw.githubusercontent.com/RichCini/LomasBoards/master/Color%20Magic/master/Finished%20Board.JPG?sanitize=true&raw=true"/>
 
-
 ### Status - version 1.1-005 FINAL
 1.1-005 is the final/release version. 004 had five tiepoints which were
 permanently connected to their final spots. No other changes from 004 were made.
