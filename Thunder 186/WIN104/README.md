@@ -1,5 +1,6 @@
-#Notes
+# Notes on Windows 1.04 on Lomas Boards
 
+## Introduction
 The Thunder 186 and its BIOS are kind-of PC-Compatible in the way that
 the Tandy 2000 was PC-Compatible. So long as software uses either MS-DOS
 INT21h calls or direct BIOS calls, it should work fine. Anything else
@@ -20,7 +21,7 @@ back-port the published sources for COMM and SYSTEM from Windows 2.03
 to something that would work for Windows 1, using a decompilation of 
 the Tandy drivers as a guide.
 
-##Status
+## Status
 As of now, I've back-ported SYSTEM and at least it doesn't crash. I'm
 not sure if it's right, but no crashing is good.
 
