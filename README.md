@@ -7,7 +7,7 @@ so I'm redrawing it in KiCAD 6 to hopefully reproduce the board.
 ## Color Magic Redux 
 <img src="https://raw.githubusercontent.com/RichCini/LomasBoards/master/Color%20Magic/Finished%20Board.JPG?sanitize=true&raw=true"/>
 
-### Status - version 1.1-005 / Version 006 Coming
+### Status - version 1.1-005 / Version 006 In Development
 1.1-005 is the final/release version, although in the process of debugging CGA Mode 6
 (used for Windows 1.04 and Sim City) I discovered that the RAM chip selects are
 improperly connected to MA13. It is safe to run without the following change if
@@ -17,11 +17,20 @@ To make the correction on existing 1.1-005 boards, it requires lifting pin 20
 of each SRAM (CS*) and connecting it to ground, and lifting pin 26 (A13) and
 connecting to MA13 (pin 20 of the socket).
 
-There is also a revised version of the U18 PAL that's recommended for all. Again,
-the update is related to discoveries made in debugging Mode 6.
+There is also a revised version of the U18 PAL that's recommended for all users.
+Again, the update is related to discoveries made in debugging Mode 6.
 
 
 ### Board Notes
+Regarding CGA Mode 6, with the above change, it now works, although it shows a
+screen artifact, the same as the original board. In this mode, there is a vertical
+black stripe along the left side of the screen image which would indicate there's
+a timing issue in the horizontal blanking (i.e., the video out is being enabled 
+one-half character time too early, before the load/shift from the character generator
+is ready for the first set of dots, and then disabled the same half-character early
+at the end of the video line. As this exists in the original board, its a mode that
+may have not been tested because so few software packages at the time used that mode.
+
 The 5V voltage regulator is a TO-3 switching replacement from EzSBC. To preserve the
 footprint and schematic symbol, it's shown as an LM7805K.
 
@@ -48,9 +57,6 @@ device. The original SRAM are stacked 6264-15 (150ns) chips which I replaced wit
 55ns chips, and those resulted in screen artifacts. PAL device speeds are either
 7ns or 15ns depending on the device.
 
-I have a single 360k MS-DOS 3.1 disk image which is posted. MS-DOS 2.1 disks are 
-also in the archive, but appear to rely on direct calls into the monitor in order to
-boot (non-standard MS-DOS boot sector) and are 320k in size (8 sectors).
 
 ### Status - version 1.1-004 WORKING
 The PALs have been fully decoded and tested in the original board (and they work
@@ -84,6 +90,9 @@ voltages. After changing USB interfaces, it worked. Original interfaces, like on
 laptop I keep around for such purposes, work fine.
 
 Regarding DOS versions, I run PC/DOS rather than MS-DOS. Versions 3.0, 3.1, and 3.3 work.
+I have a single 360k MS-DOS 3.1 disk image which is posted. MS-DOS 2.1 disks are 
+also in the archive, but appear to rely on direct calls into the monitor in order to
+boot (non-standard MS-DOS boot sector) and are 320k in size (8 sectors).
 
 The I/O ports (serial and parallel) are at non-standard, non-PC-compatible addresses, so
 any software that uses them either has to (1) allow for defining custom ports, (2) read
