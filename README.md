@@ -7,17 +7,23 @@ so I'm redrawing it in KiCAD 6 to hopefully reproduce the board.
 ## Color Magic Redux 
 <img src="https://raw.githubusercontent.com/RichCini/LomasBoards/master/Color%20Magic/Finished%20Board.JPG?sanitize=true&raw=true"/>
 
-### Status - version 1.1-005 FINAL
-1.1-005 is the final/release version. 004 had five tiepoints which were
-permanently connected to their final spots. No other changes from 004 were made.
+### Status - version 1.1-005 / Version 006 Coming
+1.1-005 is the final/release version, although in the process of debugging CGA Mode 6
+(used for Windows 1.04 and Sim City) I discovered that the RAM chip selects are
+improperly connected to MA13. It is safe to run without the following change if
+only text or low-resolution modes are used.
+
+To make the correction on existing 1.1-005 boards, it requires lifting pin 20
+of each SRAM (CS*) and connecting it to ground, and lifting pin 26 (A13) and
+connecting to MA13 (pin 20 of the socket).
+
+There is also a revised version of the U18 PAL that's recommended for all. Again,
+the update is related to discoveries made in debugging Mode 6.
+
 
 ### Board Notes
 The 5V voltage regulator is a TO-3 switching replacement from EzSBC. To preserve the
 footprint and schematic symbol, it's shown as an LM7805K.
-
-There are 4 tie points (TP2 - TP5) that need to be connected to either VCC 
-(TP3 - TP5) or the /BW (TP2) signal as applicable. A version 1.1-005 will be
-issued with these connections made permanently.
 
 The speaker connection is like the PC -- simple 4-8 ohm speaker.
 
@@ -64,6 +70,11 @@ to have the chip legend oriented properly.
 
 As with the ColorMagic, the 5V voltage regulator is a TO-3 switching replacement from EzSBC. 
 To preserve the footprint and schematic symbol, it's shown as an LM7805K.
+
+In the process of debugging Mode 6 video (mentioned above) some users reported that depending
+on the S-100 backplane used, a pull-up resistor might be needed on PRDY (pin 72). There is a note
+on the schematic of this fact, but the original design did not include one. RN4 pin 3 (4.7k 
+resistor array) can be connected to pin 72 (on the rear) of the S-100 edge connector.
 
 ### Board Notes
 The serial section seems to be sensivite to the voltage levels used on the interface of the
