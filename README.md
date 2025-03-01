@@ -96,8 +96,9 @@ it's possible the LPT-Capture would work on that port.
 
 In the process of debugging Mode 6 video (mentioned above) some users reported that depending
 on the S-100 backplane used, a pull-up resistor might be needed on PRDY (pin 72). There is a note
-on the schematic about this, but the original design did not include one. RN4 pin 3 (4.7k 
-resistor array) can be connected to pin 72 (on the rear) of the S-100 edge connector.
+on the schematic about this, but the original design did not include one. RN2 pin 8 (1.0k 
+resistor array) can be connected to pin 72 (on the rear) of the S-100 edge connector with a piece
+of wirewrap wire.
 
 ### Status - version 1.0-005 Working
 Works! PC-DOS 3 reports 256k of RAM which is correct. 
