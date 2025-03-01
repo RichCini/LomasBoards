@@ -58,13 +58,6 @@ device. The original SRAM are stacked 6264-15 (150ns) chips which I replaced wit
 7ns or 15ns depending on the device.
 
 
-### Status - version 1.1-004 WORKING
-The PALs have been fully decoded and tested in the original board (and they work
-fine). Many thanks to Jonathan Haddox for lending me an original board set and
-providing extra help and encouragement. Thanks also go to Peter for decoding
-the PALs for this project.
-
-
 ## Thunder 186 Redux 
 <img src="https://raw.githubusercontent.com/RichCini/LomasBoards/master/Thunder%20186/Thunder186_final.jpg?sanitize=true&raw=true"/>
 
@@ -77,10 +70,6 @@ to have the chip legend oriented properly.
 As with the ColorMagic, the 5V voltage regulator is a TO-3 switching replacement from EzSBC. 
 To preserve the footprint and schematic symbol, it's shown as an LM7805K.
 
-In the process of debugging Mode 6 video (mentioned above) some users reported that depending
-on the S-100 backplane used, a pull-up resistor might be needed on PRDY (pin 72). There is a note
-on the schematic of this fact, but the original design did not include one. RN4 pin 3 (4.7k 
-resistor array) can be connected to pin 72 (on the rear) of the S-100 edge connector.
 
 ### Board Notes
 The serial section seems to be sensivite to the voltage levels used on the interface of the
@@ -105,6 +94,11 @@ DOS laptop but will not work with this parallel port. I have gotten it working u
 Practical Peripherals Serial/Parallel converter/buffer. Although I haven't tested it,
 it's possible the LPT-Capture would work on that port.
 
+In the process of debugging Mode 6 video (mentioned above) some users reported that depending
+on the S-100 backplane used, a pull-up resistor might be needed on PRDY (pin 72). There is a note
+on the schematic about this, but the original design did not include one. RN4 pin 3 (4.7k 
+resistor array) can be connected to pin 72 (on the rear) of the S-100 edge connector.
+
 ### Status - version 1.0-005 Working
 Works! PC-DOS 3 reports 256k of RAM which is correct. 
 
@@ -112,11 +106,7 @@ There is one errata. Capacitor C9 in the reset circuit should be 22uF/16v polari
 is misdrawn on the original schematic. A regular tantalum fits fine in this space. The
 original board uses a 10v tantalum.
 
-### Status - version 1.0-003 Prototype
-The schematics have been drawn and the board plotted, and the PALs decoded and tested. 
-A prototype run was ordered but the board is borked. The base PLCC footprint is wrong -- 
-the 80186 (and 80286) use a non-standard pinning even though they use the PLCC68 package. 
-So, I found a compatible footprint for the next run.
+
 
 
 
