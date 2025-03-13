@@ -10,12 +10,13 @@ so I'm redrawing it in KiCAD 6 to hopefully reproduce the board.
 ### Status - version 1.1-005 / Version 006 In Development
 1.1-005 is the final/release version, although in the process of debugging CGA Mode 6
 (used for Windows 1.04 and Sim City) I discovered that the RAM chip selects are
-improperly connected to MA13. It is safe to run without the following change if
+improperly connected to MA13. It is OK to run the board without the following change if
 only text or low-resolution modes are used.
 
 To make the correction on existing 1.1-005 boards, it requires lifting pin 20
 of each SRAM (CS*) and connecting it to ground, and lifting pin 26 (A13) and
-connecting to MA13 (pin 20 of the socket).
+connecting to MA13 (pin 20 of the socket). I did this with some 30AWG wire-
+wrapping wire soldered to the tops of the pins in question.
 
 There is also a revised version of the U18 PAL that's recommended for all users.
 Again, the update is related to discoveries made in debugging Mode 6.
