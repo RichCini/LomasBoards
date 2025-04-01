@@ -1,0 +1,60 @@
+//
+// LDP Color Magic U55, equations from reverse engineering, assuming no I/Os (only I or O) and no registers
+//	Peter A. Ruetz 1/11/2024
+//	Input file for palwiz.exe
+//
+// vectors chip type: 9
+//
+
+chip 22V10; 	// Programmed Lattice GAL22V10D on TL-866 Programmer
+//
+// This is the decoder for most I/O devices on the board
+// These should match PC standard I/O address
+//
+pin 1 !BDSELECT;	// In 12	Board Select
+pin 2 pDBIN;		// In 11
+pin 3 !WR;		// In 10
+pin 4 A9;		// In 9
+pin 5 A8;		// In 8
+pin 6 A7;		// In 7
+pin 7 A6;		// In 6
+pin 8 A5;		// In 5
+pin 9 A4;		// In 4
+pin 10 A3;		// In 3
+pin 11 A2;		// In 2
+pin 13 A1;		// In 1
+pin 14 !PORT1_WR;	// Out 8    depends on: 12 10 9 8 7 6 5 4 3 2 1 0   00 1111 0110 00    0
+pin 15 A0;		// In 0
+pin 16 !THRCS;		// Out 7    depends on: 12 9 8 7 6 5 4 3 2          0  0001 0000       0
+pin 17 !DENCS;		// Out 6    depends on: 12 11 9 8 7 6 5 4 3 2       01 0001 x000       0
+			//						    01 1111 01xx       0
+pin 18 !LPEN_CLR;      	// Out 5    depends on: 12 10 9 8 7 6 5 4 3 2 1 0   00 1111 0110 11    0
+pin 19 !LPEN_SET;      	// Out 4    depends on: 12 10 9 8 7 6 5 4 3 2 1 0   00 1111 0111 00    0
+pin 20 !PIACS;    	// Out 3    depends on: 12    9 8 7 6 5 4 3 2       0  0001 1000       0
+pin 21 !CS6845;    	// Out 2    depends on: 12    9 8 7 6 5 4 3         0  1111 010        0
+pin 22 !STATUS_CS;    	// Out 1    depends on: 12 11 9 8 7 6 5 4 3 2 1 0   01 1111 0110 10    0
+pin 23 !PORT2_WR;    	// Out 0    depends on: 12 10 9 8 7 6 5 4 3 2 1 0   00 1111 0110 01    0
+
+
+Port1_WR =  BDSELECT & WR       &  A9 &  A8 &  A7 & A6 & !A5 &  A4 &  A3 & !A2 & !A1 & !A0;  	//3D8H (Write Mode Control)
+Port2_WR =  BDSELECT & WR       &  A9 &  A8 &  A7 & A6 & !A5 &  A4 &  A3 & !A2 & !A1 &  A0;  	//3D9H (Write Color Select)
+STATUS_CS = BDSELECT &    pDBIN &  A9 &  A8 &  A7 & A6 & !A5 &  A4 &  A3 & !A2 &  A1 & !A0;	//3DAH (Read Status)
+CS6845 =    BDSELECT &             A9 &  A8 &  A7 & A6 & !A5 &  A4 & !A3;      			//3D0H-3D7H (R/W CRTC)
+PIACS =     BDSELECT &            !A9 & !A8 & !A7 & A6 &  A5 & !A4 & !A3 & !A2;     		//060H-063H (R/W PIA 8255)
+LPEN_SET =  BDSELECT & WR       &  A9 &  A8 &  A7 & A6 & !A5 &  A4 &  A3 &  A2 & !A1 & !A0;  	//3DCH  (Write Light Pen Preset)
+LPEN_CLR =  BDSELECT & WR       &  A9 &  A8 &  A7 & A6 & !A5 &  A4 &  A3 & !A2 &  A1 &  A0;  	//3DBH  (Write Light Pen Clr)
+DENCS =     BDSELECT &    pDBIN & !A9 & !A8 & !A7 & A6 &       !A4 & !A3 & !A2			//40-43H, 60-63H  (Data Enable PIT, PPI)
+      |     BDSELECT &    pDBIN &  A9 &  A8 &  A7 & A6 & !A5 &  A4;			        //3D0-3DF (Data Enable CRTC)
+THRCS =     BDSELECT &            !A9 & !A8 & !A7 & A6 & !A5 & !A4 & !A3 & !A2;			//40-43H 8253 (R/W PIT 8253)
+
+Port1_WR.oe=1;
+Port2_WR.oe=1;
+CS6845.oe=1;
+STATUS_CS.oe=1;
+LPEN_SET.oe=1;
+LPEN_CLR.oe=1;
+PIACS.oe=1;
+DENCS.oe=1;
+THRCS.oe=1;
+
+A0.oe=0;
