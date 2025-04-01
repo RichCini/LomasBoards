@@ -18,8 +18,11 @@ of each SRAM (CS*) and connecting it to ground, and lifting pin 26 (A13) and
 connecting to MA13 (pin 20 of the socket). I did this with some 30AWG wire-
 wrapping wire soldered to the tops of the pins in question.
 
-There is also a revised version of the U18 PAL that's recommended for all users.
-Again, the update is related to discoveries made in debugging Mode 6.
+There is also a revised versions of the U18 and U55 PALs that's recommended for all users.
+Again, the update to U18 is related to discoveries made in debugging Mode 6, while the
+update to U55 is related to a discovery by Patrick Linstruth that the MS-DOS RTC was
+running fast. The 8253 timer was not being initialized properly due to a missing term
+in one of the equations.
 
 
 ### Board Notes
