@@ -1,14 +1,13 @@
 # LomasBoards
 Small repository of files/data related to Lomas Data Products S-100 boards. I have
 a particular interest in the Color Magic video board as it seems to have been
-supported by the Seattle Gazelle that I own. The board of course is pretty rare,
-so I'm redrawing it in KiCAD 6 to hopefully reproduce the board.
+supported by the Seattle Gazelle that I own. 
 
 ## Color Magic Redux 
 <img src="https://raw.githubusercontent.com/RichCini/LomasBoards/master/Color%20Magic/Finished%20Board.JPG?sanitize=true&raw=true"/>
 
 ### Status - version 1.1-005 / Version 006 In Development
-1.1-005 is the final/release version, although in the process of debugging CGA Mode 6
+1.1-005 is the release version, although in the process of debugging CGA Mode 6
 (used for Windows 1.04 and Sim City) I discovered that the RAM chip selects are
 improperly connected to MA13. It is OK to run the board without the following change if
 only text or low-resolution modes are used.
@@ -29,10 +28,10 @@ in one of the equations.
 Regarding CGA Mode 6, with the above change, it now works, although it shows a
 screen artifact, the same as the original board. In this mode, there is a vertical
 black stripe along the left side of the screen image which would indicate there's
-a timing issue in the horizontal blanking (i.e., the video out is being enabled 
+a timing issue in the horizontal blanking (i.e., video out is being enabled 
 one-half character time too early, before the load/shift from the character generator
 is ready for the first set of dots, and then disabled the same half-character early
-at the end of the video line. As this exists in the original board, its a mode that
+at the end of the video line.) As this exists in the original board, its a mode that
 may have not been tested because so few software packages at the time used that mode.
 
 The 5V voltage regulator is a TO-3 switching replacement from EzSBC. To preserve the
