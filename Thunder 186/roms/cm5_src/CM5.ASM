@@ -66,14 +66,14 @@ PAGE  59,132
 FALSE		equ	0
 TRUE		equ	0ffh
 DEBUGF		equ	TRUE		; allows marco expansion
-ROMSEARCH	equ	TRUE		; set true to include expansion ROM search
+ROMSEARCH	equ	FALSE		; set true to include expansion ROM search
 
 ; System compilation options
 WD100X		equ	FALSE
 CIA_HDO		equ	FALSE		;Control-it-all HD options installed
 CIA		equ	CIA_HDO
-SCSI		equ	TRUE
-HDO		equ	TRUE		;hard disk option; indicate either CIA or SCSI
+SCSI		equ	FALSE
+HDO		equ	FALSE		;hard disk option; indicate either CIA or SCSI
 
 IF	SCSI
 	scsi_options	equ	00100000b	;indicate that SCSI is present
@@ -192,14 +192,24 @@ dsk_ret_code	db	?			; (0040:0041=0)
 nec_stat	db	7 dup (?)		; (0040:0042=0)	NEC status 7 bytes
 ;---------------[Video display area]------------;
 video_mode	db	?			; (0040:0049=3)
+						;  0 = 40 x 25 text (no color)
+						;  1 = 40 x 25 text (16 color)
+						;  2 = 80 x 25 text (no color)
+						;  3 = 80 x 25 text (16 color)
+						;  4 = 320 x 200 grafix 4 color
+						;  5 = 320 x 200 grafix 0 color
+						;  6 = 640 x 200 grafix 0 color
+						;  7 = 80 x 25 text (mono card)
 video_columns	dw	?			; (0040:004A=50h)
 video_buf_siz	dw	?			; (0040:004C=1000h)
 video_segment	dw	?			; (0040:004E=0)
 vid_curs_pos0	dw	8 dup (?)		; (0040:0050=184Fh)
 vid_curs_mode	dw	?			; (0040:0060=2000h)
 video_page	db	?			; (0040:0062=0)
-video_port	dw	?			; (0040:0063=3D4h)
-video_mode_reg	db	?			; (0040:0065=29h)
+; normal BIOS does not store the base address
+video_port	dw	?			; (0040:0063=3D4h) 
+;video_base	dw	?			; PC has card base address at 63h
+video_mode_reg	db	?			; (0040:0065=29h) 6845 mode setting
 video_color	db	?			; (0040:0066=30h)
 ;---------------[Used to setup ROM]-------------;
 gen_io_ptr	dw	?,?			; (0040:0067=0) ; Eprom base Offset,Segment
@@ -2893,26 +2903,40 @@ sub_32		proc	near
  		retn
 sub_32		endp
 
+
+;	ENTRY   0F045h                          ; IBM entry point for table
 ; INT10 function table
 ;a.0fd1
-INT10FN:	dw	offset loc_193		;  xref A.101B
-		dw	offset loc_202		;  xref A.101B
-		dw	offset loc_203		;  xref A.101B
-		dw	offset loc_205		;  xref A.101B
-		dw	offset loc_292		;  xref A.101B
-		dw	offset loc_206		;  xref A.101B
-		dw	offset loc_211		;  xref A.101B
-		dw	offset loc_219		;  xref A.101B
-		dw	offset loc_225		;  xref A.101B
-		dw	offset loc_231		;  xref A.101B
-		dw	offset loc_234		;  xref A.101B
-		dw	offset loc_207		;  xref A.101B
-		dw	offset loc_238		;  xref A.101B
-		dw	offset loc_237		;  xref A.101B
-		dw	offset loc_280		;  xref A.101B
-		dw	offset loc_210		;  xref A.101B
+;M1	LABEL	WORD	; TABLE OF ROUTINES WITHIN VIDEO I/O
+V_TABLE:	dw	offset SET_MODE			;  xref A.101B
+		dw	offset SET_CTYPE		;  xref A.101B
+		dw	offset SET_CPOS			;  xref A.101B
+		dw	offset READ_CURSOR		;  xref A.101B
+		dw	offset READ_LPEN		;  xref A.101B
+		dw	offset ACT_DISP_PAGE		;  xref A.101B
+		dw	offset SCROLL_UP		;  xref A.101B
+		dw	offset SCROLL_DOWN		;  xref A.101B
+		dw	offset READ_AC_CURRENT		;  xref A.101B
+		dw	offset WRITE_AC_CURRENT		;  xref A.101B
+		dw	offset WRITE_C_CURRENT		;  xref A.101B
+		dw	offset SET_COLOR		;  xref A.101B
+		dw	offset WRITE_DOT		;  xref A.101B
+		dw	offset READ_DOT			;  xref A.101B
+		dw	offset WRITE_TTY		;  xref A.101B
+		dw	offset VIDEO_STATE		;  xref A.101B
 
-;INT 10 Interrupt Handler
+
+;===============================================================================
+;  I N T  1 0 h  -  B I O S   V I D E O   S E R V I C E S
+;
+;	Purpose:  INT 10h BIOS video services.
+;	Entry  :	Registers	Function
+;			AH=		Major function code
+;			AL=		Sub-function
+;	Exit   :
+;
+;===============================================================================
+;	ENTRY   0F065h                          ; IBM entry, video bios service
 ;a.0ff1
 INT10HANDLER:
 ;     	db	0FBh,0FCh, 06h, 1Eh, 52h, 51h
@@ -2933,11 +2957,12 @@ INT10HANDLER:
 		mov	al,ah
 		xor	ah,ah
 		shl	ax,1
-		mov	si,ax
-		cmp	ax,20h			; max functions?
-		jb	loc_192			;100C
+		mov	si,ax			; convert function code to table offset
+		cmp	ax,20h			; max function code * 2 
+		jb	loc_192			;100C valid function, continue
 		pop	ax
-		jmp	loc_200			;1136
+		jmp	loc_200			;1136 restore AX and exit
+
 loc_192:
  		mov	ax,40h
  		mov	ds,ax
@@ -2945,8 +2970,20 @@ loc_192:
  		mov	es,ax
  		pop	ax
  		mov	ah,ds:video_mode	; (0040:0049=3)
- 		jmp	word ptr cs:INT10FN[si]	;*(A.0FD1=1078h)     16 entries
+ 		jmp	word ptr cs:V_TABLE[si]	;*(A.0FD1=1078h)     16 entries
 
+
+;===============================================================================
+;  I N T  1 D h  -  V I D E O   M O D E S
+;
+;	Purpose:  INT 1Dh BIOS video modes.
+;	Entry  :	Registers	Function
+;
+;
+;	Exit   :
+;
+;===============================================================================
+;	ENTRY   0F0A4h                          ; IBM entry, SET_MODE tables
 ;a.1020
 ; Video Parameter Table
 ;00h 16 BYTEs   6845 register values for modes 00h and 01h
@@ -2960,44 +2997,64 @@ loc_192:
 ;48h  8 BYTEs   columns on screen for each of modes 00h through 07h
 ;50h  8 BYTEs   CRT controller mode bytes for each of modes 00h through 07h
 INT_1D:
-		db	 38h, 28h, 2Dh, 0Ah, 1Fh, 06h	; Init string for 40 x 25
-		db	 19h, 1Ch, 02h, 07h, 06h, 07h
-		db	 00h, 00h, 00h, 00h
+		db	38h, 28h, 2Dh, 0Ah, 1Fh, 06h	; Init string for 40 x 25
+		db	19h, 1Ch, 02h, 07h, 06h, 07h
+		db	0, 0, 0, 0
 
-		db	 71h, 50h      			; Init string for 80 x 25 col
-		db	 5Ah, 0Ah, 1Fh, 06h, 19h, 1Ch
-		db	 02h, 07h, 06h, 07h, 00h, 00h
-		db	 00h, 00h
+		db	71h, 50h, 5Ah, 0Ah, 1Fh, 06h	; Init string for 80 x 25 col
+		db	19h, 1Ch, 02h, 07h, 06h, 07h
+		db	0, 0, 0, 0
 
-		db	 38h, 28h, 2Dh, 0Ah		; Init string for GRAPHIX
-		db	 7Fh, 06h, 64h, 70h, 02h, 01h
-		db	 06h, 07h, 00h, 00h, 00h, 00h
+		db	38h, 28h, 2Dh, 0Ah, 7Fh, 06h	; Init string for GRAPHIX
+		db	64h, 70h, 02h, 01h, 06h, 07h
+		db	0, 0, 0, 0
 
-		db	 61h, 50h, 52h, 0Fh, 19h, 06h	; Init string for 80 x 25 b/w
-		db	 19h, 19h, 02h, 0Dh, 0Bh, 0Ch
-		db	 00h, 00h, 00h, 00h
+		db	61h, 50h, 52h, 0Fh, 19h, 06h	; Init string for 80 x 25 b/w
+		db	19h, 19h, 02h, 0Dh, 0Bh, 0Ch
+		db	0, 0, 0, 0
 
 ;a.1060	Regen lengths
-REGENL:		dw	800h			; xref A.1111 40x25
-     		dw	1000h			; 80x25
-		dw	4000h			; graphics
-		dw	4000h
+REGENL:		dw	2048			; xref A.1111 40x25
+     		dw	4096			; 80x25
+		dw	16384			; graphics
+		dw	16384
 ;a.1068 Column lengths				; Data table (indexed access) xref A.1103
-MAXCOLS:	db	28h, 28h, 50h, 50h
-		db	28h, 28h, 50h, 50h
-;a;1070 table of mode sets			; Data table (indexed access) xref A.10FA
-MODES:		db	2Ch, 28h, 2Dh, 29h
-		db	2Ah, 2Eh, 1Eh, 29h
+MAXCOLS:	db	28h, 28h, 50h, 50h, 28h, 28h, 50h, 50h
 
-;����� Indexed Entry Point ������������������������������������������������
+;a;1070 table of mode sets			; Data table (indexed access) xref A.10FA
+MODES:		db	2Ch, 28h, 2Dh, 29h, 2Ah, 2Eh, 1Eh, 29h
+
+
+;===============================================================================
+;  Individual routines within the INT 10H Video Services
+;
+;	Entry  :	Registers	Function
+;			AH		Video mode (0-7) from BDA 40:49
+;			AL		Parameter
+;			DS		BIOS data area (40h)
+;			ES		video memory area (B800h)
+;
+;	Exit   :
+;
+;===============================================================================
+;--- SET MODE ------------------------------------------------------------------
+;
+;	AL=	desired video mode 0-7
+;	3D4h= 6845 index register
+;	3D5h= 6845 data register
+;	3D8h= master display mode latch control register
+;	3D9h= background color latch select register
+;	3DAh= status/feature register
+;	3DB/3DC = light pen
 ;a.1078
-loc_193:					;  xref A.0FD1, 101B
- 		mov	dx,3D4h
+SET_MODE:					;  xref A.0FD1, 101B
+ 		mov	dx,3D4h			; index register
  		mov	bl,0
- 		cmp	al,7
- 		jb	loc_194			; Jump if below
- 		jmp	loc_200			; (1136)
-loc_194:					;  xref A.107F
+ 		cmp	al,7			; max video mode
+ 		jb	loc_194			; Allowed mode?
+ 		jmp	loc_200			; no...exit (1136)
+
+loc_194:
  		mov	ah,al
  		mov	ds:video_mode,al	; (0040:0049=3)
  		mov	ds:video_port,dx	; (0040:0063=3D4h)
@@ -3010,7 +3067,7 @@ loc_194:					;  xref A.107F
  		pop	dx
  		sub	ax,ax
  		mov	ds,ax
- 		lds	bx,dword ptr ds:Int1Dv	; (0000:0074=0C958h) Load seg:offset p
+ 		lds	bx,dword ptr ds:Int1Dv	; (0000:0074=0C958h) grabe table address from IVT
  		pop	ax
  		mov	cx,10h
  		cmp	ah,2
@@ -3039,30 +3096,34 @@ locloop_196:					;  xref A.10C6
  		dec	dx
  		loop	locloop_196		; Loop if cx > 0
 
+; this clears the screen
  		pop	ax
  		pop	ds
  		xor	di,di			; Zero register
  		mov	ds:video_segment,di	; (0040:004E=0)
  		mov	byte ptr ds:video_page,0	; (0040:0062=0)
- 		mov	cx,2000h
+ 		mov	cx,2000h		; 8192 words
  		cmp	ah,4
  		jb	loc_197			; Jump if below
  		xor	ax,ax			; Zero register
  		jmp	short loc_198		; (10E4)
+
 loc_197:					;  xref A.10DB
- 		mov	ax,720h
+ 		mov	ax, 7*100h+' '		; Word for text fill 720h
 ;a.10e4
 loc_198:					;  xref A.10DF
- 		rep	stosw			; Rep when cx >0 Store ax to es:[di]
+ 		rep	stosw			; fill the screen with spaces
+
  		mov	word ptr ds:vid_curs_mode,67h	; (0040:0060=2000h)
  		mov	al,ds:video_mode	; (0040:0049=3)
  		xor	ah,ah			; Zero register
  		mov	si,ax
- 		mov	dx,ds:video_port	; (0040:0063=3D4h)
+ 		mov	dx,ds:video_port	; (0040:0063=3D4h) get the port
  		add	dx,4
- 		mov	al,byte ptr cs:MODES[si]		; (A.1070=2Ch)
+
+ 		mov	al,byte ptr cs:MODES[si]	; load data to set mode
  		out	dx,al			; port 3D8h, CGA video control
- 		mov	ds:video_mode_reg,al	; (0040:0065=29h)
+ 		mov	ds:video_mode_reg,al	; (0040:0065=29h) save active data
 
  		mov	al,byte ptr cs:MAXCOLS[si]	; (A.1068='((PP((PP')
  		xor	ah,ah			; Zero register
@@ -3070,20 +3131,23 @@ loc_198:					;  xref A.10DF
  		and	si,word ptr 0Eh
  		mov	cx,word ptr cs:REGENL[si]	; (A.1060=800h)
  		mov	ds:video_buf_siz,cx	; (0040:004C=1000h)
- 		mov	cx,8
+; set cursor position to upper-left corner in each page
+ 		mov	cx,8			; 8 pages
  		mov	di,offset vid_curs_pos0	; (0040:0050=4Fh) bf 0050
  		push	ds
  		pop	es
- 		xor	ax,ax			; Zero register
- 		rep	stosw			; Rep when cx >0 Store ax to es:[di]
+ 		xor	ax,ax
+ 		rep	stosw			; set cursor position to 0
+
  		inc	dx
- 		mov	al,30h			; '0'
- 		cmp	byte ptr ds:video_mode,6	; (0040:0049=3)
- 		jne	loc_199			; Jump if not equal
- 		mov	al,3Fh			; '?'
+ 		mov	al,30h			; assume NOT mode 7 
+ 		cmp	byte ptr ds:video_mode,6	; is it mode 7
+ 		jne	loc_199			; no, continue
+ 		mov	al,3Fh			; yes, set palette byte for 640x200 BW
+
 loc_199:					;  xref A.112E
  		out	dx,al			; port 3D9h, CGA color control
- 		mov	ds:video_color,al	; (0040:0066=30h)
+ 		mov	ds:video_color,al	; (0040:0066=30h) save color palette
 ;a.1136
 loc_200:					;  xref A.1081, 1147, 1176, 11C0
  						;            11DC, 1252, 12F3, 1331
@@ -3100,9 +3164,9 @@ loc_201:					;  xref A.11F7
  		pop	es
  		iret				; Interrupt return
 
-;����� Indexed Entry Point ������������������������������������������������
 
-loc_202:					;  xref A.0FD3, 101B
+;--- SET CTYPE -----------------------------------------------------------------
+SET_CTYPE:					;  xref A.0FD3, 101B
  		mov	ah,0Ah
  		mov	ds:vid_curs_mode,cx	; (0040:0060=2000h)
  		call	sub_33			; (1149)
@@ -3134,9 +3198,9 @@ sub_33		proc	near
 sub_33		endp
 
 
-;����� Indexed Entry Point ������������������������������������������������
+;--- SET CPOS ------------------------------------------------------------------
 ;a.115f
-loc_203:					;  xref A.0FD5, 101B
+SET_CPOS:					;  xref A.0FD5, 101B
  		mov	cl,bh
  		xor	ch,ch			; Zero register
  		shl	cx,1			; Shift w/zeros fill
@@ -3166,9 +3230,9 @@ sub_34		proc	near
 sub_34		endp
 
 
-;����� Indexed Entry Point ������������������������������������������������
+;--- READ CURSOR ---------------------------------------------------------------
 ;a.1189
-loc_205:					;  xref A.0FD7, 101B
+READ_CURSOR:					;  xref A.0FD7, 101B
  		mov	bl,bh
  		xor	bh,bh			; Zero register
  		shl	bx,1			; Shift w/zeros fill
@@ -3183,9 +3247,9 @@ loc_205:					;  xref A.0FD7, 101B
  		pop	es
  		iret				; Interrupt return
 
-;����� Indexed Entry Point ������������������������������������������������
+;--- ACT DISP PAGE -------------------------------------------------------------
 ;a.119f
-loc_206:					;  xref A.0FDB, 101B
+ACT_DISP_PAGE:					;  xref A.0FDB, 101B
  		mov	ds:video_page,al	; (0040:0062=0)
  		mov	cx,ds:video_buf_siz	; (0040:004C=1000h)
  		cbw				; Convrt byte to word
@@ -3202,9 +3266,9 @@ loc_206:					;  xref A.0FDB, 101B
  		call	sub_34			; (1178)
  		jmp	loc_200			; (1136)
 
-;����� Indexed Entry Point ������������������������������������������������
+;--- SET COLOR -----------------------------------------------------------------
 ;a.11c3
-loc_207:					;  xref A.0FE7, 101B
+SET_COLOR:					;  xref A.0FE7, 101B
  		mov	dx,ds:video_port	; (0040:0063=3D4h)
  		add	dx,5
  		mov	al,ds:video_color	; (0040:0066=30h)
@@ -3224,9 +3288,9 @@ loc_209:					;  xref A.11CF
  		or	al,20h			; ' '
  		jmp	short loc_208		; (11D8)
 
-;����� Indexed Entry Point ������������������������������������������������
+;--- VIDEO STATE ---------------------------------------------------------------
 ;a.11e9
-loc_210:					;  xref A.0FEF, 101B
+VIDEO_STATE:					;  xref A.0FEF, 101B
  		mov	ah,byte ptr ds:video_columns	; (0040:004A=50h)
  		mov	al,ds:video_mode	; (0040:0049=3)
  		mov	bh,ds:video_page	; (0040:0062=0)
@@ -3254,9 +3318,9 @@ sub_35		proc	near
 sub_35		endp
 
 
-;����� Indexed Entry Point ������������������������������������������������
+;--- SCROLL UP -----------------------------------------------------------------
 ;a.120b
-loc_211:					;  xref A.0FDD, 101B
+SCROLL_UP:					;  xref A.0FDD, 101B
  		mov	bl,al
  		cmp	ah,4
  		jb	loc_212			; Jump if below
@@ -3358,9 +3422,9 @@ sub_38		proc	near
 sub_38		endp
 
 
-;����� Indexed Entry Point ������������������������������������������������
+;--- SCROLL DOWN ---------------------------------------------------------------
 ;a.1290
-loc_219:					;  xref A.0FDF, 101B
+SCROLL_DOWN:					;  xref A.0FDF, 101B
  		std				; Set direction flag
  		mov	bl,al
  		cmp	ah,4
@@ -3395,9 +3459,10 @@ loc_224:					;  xref A.12A6
  		mov	bl,dh
  		jmp	short loc_222		; (12B9)
 
-;����� Indexed Entry Point ������������������������������������������������
+
+;--- READ AC CURRENT -----------------------------------------------------------
 ;a.12cc
-loc_225:					;  xref A.0FE1, 101B
+READ_AC_CURRENT:					;  xref A.0FE1, 101B
  		cmp	ah,4
  		jb	loc_226			; Jump if below
  		cmp	ah,7
@@ -3448,9 +3513,9 @@ loc_230:					;  xref A.1304
 sub_39		endp
 
 
-;����� Indexed Entry Point ������������������������������������������������
+;--- WRITE AC CURRENT ----------------------------------------------------------
 ;a.1312
-loc_231:					;  xref A.0FE3, 101B
+WRITE_AC_CURRENT:					;  xref A.0FE3, 101B
  		cmp	ah,4
  		jb	loc_232			; Jump if below
  		cmp	ah,7
@@ -3474,9 +3539,9 @@ locloop_233:					;  xref A.132F
 
  		jmp	loc_200			; (1136)
 
-;����� Indexed Entry Point ������������������������������������������������
+;--- WRITE C CURRENT -----------------------------------------------------------
 ;a.1334
-loc_234:					;  xref A.0FE5, 101B
+WRITE_C_CURRENT:					;  xref A.0FE5, 101B
  		cmp	ah,4
  		jb	loc_235			; Jump if below
  		cmp	ah,7
@@ -3498,9 +3563,9 @@ locloop_236:					;  xref A.134E
 
  		jmp	loc_200			; (1136)
 
-;����� Indexed Entry Point ������������������������������������������������
+;--- READ DOT ------------------------------------------------------------------
 ;a.1353
-loc_237:					;  xref A.0FEB, 101B
+READ_DOT:					;  xref A.0FEB, 101B
  		call	sub_40			; (1387)
  		mov	al,es:[si]
  		and	al,ah
@@ -3509,9 +3574,9 @@ loc_237:					;  xref A.0FEB, 101B
  		rol	al,cl			; Rotate
  		jmp	loc_200			; (1136)
 
-;����� Indexed Entry Point ������������������������������������������������
+;--- WRITE DOT -----------------------------------------------------------------
 ;a.1364
-loc_238:					;  xref A.0FE9, 101B
+WRITE_DOT:					;  xref A.0FE9, 101B
  		push	ax
  		push	ax
  		call	sub_40			; (1387)
@@ -3995,10 +4060,9 @@ sub_47:
  		retn
 sub_46		endp
 
-
-;����� Indexed Entry Point ������������������������������������������������
+;--- WRITE TTY ------------------------------------------------------------------
 ;a.164e
-loc_280:					;  xref A.0FED, 101B
+WRITE_TTY:					;  xref A.0FED, 101B
  		push	ax
  		push	ax
  		mov	ah,3
@@ -4081,9 +4145,9 @@ loc_291:					;  xref A.1663
 PENOFF:	db	3, 3, 5, 5, 3, 3, 3, 4		; Data table (indexed access) xref A.1704
      		
 
-;����� Indexed Entry Point ������������������������������������������������
+;--- READ LPEN -----------------------------------------------------------------
 ;a.16d5
-loc_292:					;  xref A.0FD9, 101B
+READ_LPEN:					;  xref A.0FD9, 101B
  		mov	ah,0
  		mov	dx,ds:video_port	; (0040:0063=3D4h)
  		add	dx,6
