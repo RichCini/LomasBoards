@@ -305,7 +305,8 @@ dosdir  ends
 ;===============================================================================
 ;  C O D E   S E G M E N T  (BIOS code segment)
 ;===============================================================================
-code    SEGMENT
+code    SEGMENT at 0F000H
+;    ASSUME CS:code, DS:data, ES:NOTHING, SS:dosdir
 
 entry   macro   x
         pad     =BANNER - $ + x	; - 0E000h
@@ -326,10 +327,12 @@ endm
 
 ; this code sits at F:E000
 	org	0		; zero-start ROM
+;	org	0E000h		; should this be the real org?
+
 banner: 	db	"LDP THUNDER REV 1.0 10/21/85"
-;	IF	SCSI
-;		db	"-S"
-;	ENDIF
+	IF	SCSI
+		db	"-S"
+	ENDIF
 		db	0ah, 0dh, 0
 
 ; Continues from CPU initialization code at 1C00h that initializes the 80186
@@ -382,7 +385,7 @@ loc_5:						;  xref A.0051
  		mov	di,Int01v		; (0000:0004=0F4h)
 
 ;fill interrupt table with default vector pointing to INT00
- 		mov	cx,1FEh
+ 		mov	cx,1FEh			; 7F * 4
  		rep	movsw			; Rep when cx >0 Mov [si] to es:[di]
 
 ; set invalid opcode handler
@@ -409,23 +412,21 @@ loc_5:						;  xref A.0051
 loc_6:						;  xref A.0090
  		mov	si,offset banner	; (A.0000=4Ch)
  		call	prtzstr			; (05E5)
- 		call	sub_7			; (0473) vectors 18, 19, 15, 1B, 11 and 1C
- 		call	sub_8			; (04B5) vectors 0C, 08, 1A and timers
- 		call	sub_2			; (01BF) ram sizing
- 		call	sub_28			; (0AD4) vectors 16, 0D, 09 keyboard
- 		call	sub_11			; (05F6) vectos 13, 0B, 1E
-;*****
-; This might be a good place to put the expansion ROM code. But, we may want
-;	to swap the position of the disk reset with the two other vector traps
-;	although a regular SCSI card is unlikely to trap serial/parallel ports.
-;	Since the LomasSCSI has 4 serial ports, unsure if this is important.
-;		call	EXPROM
-;*****
+ 		call	InitEquipList		; (0473) vectors 18, 19, 15, 1B, 11 and 1C
+ 		call	InitTimers		; (04B5) vectors 0C, 08, 1A and timers
+ 		call	RamTest			; (01BF) ram sizing and vactor 12
+ 		call	InitKeyboard		; (0AD4) vectors 16, 0D, 09 keyboard
+		call	InitFloppy		; (05F6) vectos 13, 0B, 1E
  		mov	ah,0
- 		int	13h			; Disk  dl=drive ?  ah=func 00h
- 						;  reset disk, al=return status
- 		call	sub_4			; (02BC) vector 14 serial 0
- 		call	sub_3			; (0224) vector 17 printer
+ 		int	13h			; Disk  dl=drive ?  ah=func 00h reset disk, al=return status
+ 		call	InitSerialPorts		; (02BC) vector 14 serial 0
+ 		call	InitPrinter		; (0224) vector 17 printer
+;*****
+; This might be a good place to put the expansion ROM code after all hardware is
+; initialized. Only DS is preserved.
+IF ROMSEARCH
+		call	EXPROM
+ENDIF
 ; re-send EOIs
  		mov	ax,8000h
  		mov	dx,0FF22h		;PCRBASE+ICR+EOIREG
@@ -438,7 +439,10 @@ loc_6:						;  xref A.0090
 
 msg1:		db	'ROM checksum failure', 0Ah, 0Dh, 0
 
- ;a.00e0
+;===============================================================================
+;a.00e0
+; INT 06 - Invalid opcode handler. Just prints a message and increment to the 
+; next instruction.
 INT06HANDLER:
  		push	bp
  		mov	bp,sp
@@ -463,7 +467,10 @@ data_79:
 
 msg2:		db	'Bad opcode encountered', 0Ah, 0Dh,0
 
+
+;===============================================================================
 ;a.0113
+; INT 00 - Invalid Interrupt
 INT00HANDLER:
  		push	ax
  		push	bx
@@ -547,8 +554,10 @@ loc_11:						;  xref A.0176
 
 msg4:		db	'Attempting to boot from diskette.', 0Dh, 0Ah, 0
 
- ;a.01a9
- ; Get memory size in AX
+
+;===============================================================================
+;a.01a9
+; INT 12 - Memory Size AX
 INT12HANDLER:
         push   ds
         mov    ax,40h
@@ -557,8 +566,9 @@ INT12HANDLER:
         pop    ds
         iret
 
- ;a.01b4
- ; get equipment list
+;===============================================================================
+;a.01b4
+; INT 11 - Equipment List
 INT11HANDLER:
         push   ds
         mov    ax,40h
@@ -575,13 +585,14 @@ INT11HANDLER:
 ;===============================================================================
 ;a.1bf 
 ; this tests all RAM
-sub_2		proc	near
+RamTest		proc	near
  		cld				; Clear direction
  		push	ds
  		push	es
  		mov	ax,40h
  		mov	ds,ax
  		mov	bx,1000h
+; the first 64k was already tested so set main RAM size at 64k to start
  		mov	word ptr ds:main_ram_size,40h	; (0040:0013=280h)
  		mov	ax,55AAh
  		mov	dx,0AA55h
@@ -623,7 +634,7 @@ locloop_14:					;  xref A.0211
  		pop	es
  		pop	ds
  		retn
-sub_2		endp
+RamTest		endp
 
 
 ;===============================================================================
@@ -633,7 +644,7 @@ sub_2		endp
 ;===============================================================================
 ;a.0224 
 ; Grab INT17 (printer) vector
-sub_3		proc	near
+InitPrinter	proc	near
  		push	ds
  		xor	ax,ax			; Zero register
  		mov	ds,ax
@@ -642,16 +653,17 @@ sub_3		proc	near
  		mov	ds:Int17v+2,cs		; (0000:005E=0F000h)
  		mov	ax,40h
  		mov	ds,ax
- 		mov	word ptr ds:prn_port_1,0D0h	; (0040:0008=378h)
+ 		mov	word ptr ds:prn_port_1,printer_port	;0D0h (0040:0008=378h)
  		pop	ds
  		mov	ah,1
  		int	17h			; Printer  dx=prn?, ah=func 01h
  						;  initialize, ah=return status
  		retn
-sub_3		endp
+InitPrinter	endp
 
+;===============================================================================
 ;a.0244
-; Int17 handler
+; INT 17 - Printer Services
 INT17HANDLER:
  		sti				; Enable interrupts
  		push	ds
@@ -661,27 +673,32 @@ INT17HANDLER:
  		push	si
  		mov	bx,40h
  		mov	ds,bx
- 		test	ah,ah
- 		jz	loc_16			; Jump if zero
- 		dec	ah
- 		jz	loc_19			; Jump if zero
- 		dec	ah
- 		jz	loc_20			; Jump if zero
-loc_15:						;  xref A.0277, 02BA
+; jump to functions
+ 		test	ah,ah			; AH=2 read status to AH
+ 		jz	loc_16	
+
+ 		dec	ah			; AX=1 initialize 
+ 		jz	loc_19	
+
+ 		dec	ah			; AX-0 print character in AL
+ 		jz	loc_20	
+int17_exit:					;  xref A.0277, 02BA
  		pop	si
  		pop	bx
  		pop	cx
  		pop	dx
  		pop	ds
  		iret				; Interrupt return
+
+; Read printer status.
 loc_16:						;  xref A.0251
  		push	ax
  		mov	bl,32h			; '2'
- 		xor	cx,cx			; Zero register
- 		out	0D0h,al			; port 0D0h
+ 		xor	cx,cx
+ 		out	0D0h,al			; port 0D0h printer_port
 
 locloop_17:					;  xref A.026E, 0272
- 		in	al,0D2h			; port 0D2h
+ 		in	al,0D2h			; port 0D2h PPI_B
  		test	al,20h			; ' '
  		jz	loc_18			; Jump if zero
  		loop	locloop_17		; Loop if cx > 0
@@ -689,46 +706,50 @@ locloop_17:					;  xref A.026E, 0272
  		dec	bl
  		jnz	locloop_17		; Jump if not zero
  		or	ah,1
- 		jmp	short loc_15		; (025B)
+ 		jmp	short int17_exit		; (025B)
 ;a.0279		
 loc_18:						;  xref A.026C
  		mov	al,1
- 		out	0D6h,al			; port 0D6h
+ 		out	0D6h,al			; port 0D6h PPI_CR
  		push	ax
  		pop	ax
  		mov	al,0
- 		out	0D6h,al			; port 0D6h
+ 		out	0D6h,al			; port 0D6h PPI_CR
  		push	ax
  		pop	ax
  		mov	al,1
- 		out	0D6h,al			; port 0D6h
+ 		out	0D6h,al			; port 0D6h PPI_CR
  		pop	ax
  		jmp	short loc_20		; (02AB)
+
+; Initialize printer
 ;a.028c
 loc_19:						;  xref A.0255
  		push	ax
  		mov	al,1
- 		out	0D6h,al			; port 0D6h
+ 		out	0D6h,al			; port 0D6h PPI_CR
  		push	ax
  		pop	ax
  		mov	al,3
- 		out	0D6h,al			; port 0D6h
+ 		out	0D6h,al			; port 0D6h PPI_CR
  		push	ax
  		pop	ax
  		mov	al,6
- 		out	0D6h,al			; port 0D6h
+ 		out	0D6h,al			; port 0D6h PPI_CR
  		push	ax
  		pop	ax
  		mov	al,4
- 		out	0D6h,al			; port 0D6h
+ 		out	0D6h,al			; port 0D6h PPI_CR
  		call	sub_17			; (08C3)
  		mov	al,5
- 		out	0D6h,al			; port 0D6h
+ 		out	0D6h,al			; port 0D6h PPI_CR
  		pop	ax
+
+
 ;a.02ab		
 loc_20:						;  xref A.0259, 028A
  		push	ax
- 		in	al,0D2h			; port 
+ 		in	al,0D2h			; PPI_B
  		mov	bl,10h
  		test	al,20h			; ' '
  		jz	loc_21			; Jump if zero
@@ -736,7 +757,7 @@ loc_20:						;  xref A.0259, 028A
 loc_21:						;  xref A.02B2
  		pop	ax
  		mov	ah,bl
- 		jmp	short loc_15		; (025B)
+ 		jmp	short int17_exit		; (025B)
 
 ;===============================================================================
  ;                              SUBROUTINE
@@ -745,7 +766,7 @@ loc_21:						;  xref A.02B2
 ;===============================================================================
 ;a.02bc
 ; Grab INT14 serial vector
-sub_4		proc	near
+InitSerialPorts		proc	near
  		push	ds
  		xor	ax,ax	
  		mov	ds,ax
@@ -757,17 +778,18 @@ sub_4		proc	near
 ; should code bb 00 00
  		mov	bx,offset rs232_port_1		; (0040:0000=0F8h)
 ; sets serial ports to port 80h (com1) and 0c0h (com2)
- 		mov	ax,80h
+ 		mov	ax,ACIA1BASE		; 80h COM1
  		mov	[bx],ax
- 		mov	ax,0C0h
+ 		mov	ax,ACIA0BASE		; 0C0h COM2
  		add	bx,2
  		mov	[bx],ax
  		pop	ds
  		retn
-sub_4		endp
+InitSerialPorts		endp
 
-;a.02e2
-; Int14 Handler
+;===============================================================================
+; a.02e2
+; INT 14 - Serial Communications
 INT14HANDLER:
  		push	ds
  		push	dx
@@ -775,27 +797,34 @@ INT14HANDLER:
  		push	di
  		push	bx
  		push	cx
- 		mov	si,dx
- 		shl	si,1			; Shift w/zeros fill
+ 		mov	si,dx			; DX= port ID 0/1
+ 		shl	si,1	
  		mov	dx,40h
  		mov	ds,dx
  		mov	dx,ds:rs232_port_1[si]	; (0040:0000=3F8h)
- 		or	dx,dx			; Zero ?
- 		jz	loc_24			; Jump if zero
- 		or	ah,ah			; Zero ?
- 		jz	loc_25			; Jump if zero
+ 		or	dx,dx			; dx= address of port
+ 		jz	I14_exit		; no port available? Exit
+
+; function dispatch
+; AH=0 init	AH=1 send	AH=2 receive	AH=3 status
+ 		or	ah,ah			; AX=0 initialize
+ 		jz	InitSerPorts	
+
  		dec	ah
- 		jnz	loc_22			; Jump if not zero
- 		jmp	loc_30			; (03AB)
-loc_22:						;  xref A.02FF
+ 		jnz	I14_1
+ 		jmp	loc_30			; (03AB) send
+
+I14_1:						;  xref A.02FF
  		dec	ah
- 		jnz	loc_23			; Jump if not zero
- 		jmp	loc_35			; (03E6)
-loc_23:						;  xref A.0306
+ 		jnz	I14_2
+ 		jmp	loc_35			; (03E6) receive
+
+I14_2:						;  xref A.0306
  		dec	ah
- 		jnz	loc_24			; Jump if not zero
- 		jmp	loc_47			; (0454)
-loc_24:						;  xref A.02F7, 030D, 03C5, 03DB
+ 		jnz	I14_exit
+ 		jmp	loc_47			; (0454) status
+
+I14_exit:					;  xref A.02F7, 030D, 03C5, 03DB
  						;            03E3, 0402, 041D, 0465
  		pop	cx
  		pop	bx
@@ -803,9 +832,10 @@ loc_24:						;  xref A.02F7, 030D, 03C5, 03DB
  		pop	si
  		pop	dx
  		pop	ds
- 		iret				; Interrupt return
+ 		iret	
 
-loc_25:						;  xref A.02FB
+
+InitSerPorts:					;  xref A.02FB
  		push	ax
  		mov	ah,42h			; 'B'
  		mov	bl,al
@@ -845,6 +875,7 @@ locloop_27:					;  xref A.0345
  		push	dx
  		cmp	dx,82h
  		ja	loc_28			; Jump if above
+
 ; set timer register for right UART
  		mov	dx,0FF5Ah		;PCRBASE+T1CR+TMRCA
  		jmp	short loc_29		; (0368)
@@ -881,134 +912,143 @@ data_81:						; xref A.036E
 		dw	0034h, 0034h, 001ah, 001ah
 		dw	000dh, 000dh, 0006h, 0007h
 
-
+; Serial send
 loc_30:						;  xref A.0301
  		push	ax
  		add	dx,2
  		mov	al,37h			; '7'
  		out	dx,al			; port 2, DMA-1 bas&add ch 1
- 		xor	cx,cx			; Zero register
+ 		xor	cx,cx	
  		mov	bl,4
 
 locloop_31:					;  xref A.03BB, 03BF
  		in	al,dx			; port 2, DMA-1 bas&add ch 1
  		test	al,80h
- 		jnz	loc_32			; Jump if not zero
+ 		jnz	loc_32	
  		loop	locloop_31		; Loop if cx > 0
 
  		dec	bl
- 		jnz	locloop_31		; Jump if not zero
+ 		jnz	locloop_31
  		pop	ax
  		or	ah,80h
- 		jmp	loc_24			; (0312)
+ 		jmp	I14_exit		; (0312)
 loc_32:						;  xref A.03B9
- 		xor	cx,cx			; Zero register
+ 		xor	cx,cx	
  		mov	bl,2
 
 locloop_33:					;  xref A.03D1, 03D5
  		in	al,dx			; port 2, DMA-1 bas&add ch 1
  		test	al,1
- 		jnz	loc_34			; Jump if not zero
+ 		jnz	loc_34	o
  		loop	locloop_33		; Loop if cx > 0
 
  		dec	bl
- 		jnz	locloop_33		; Jump if not zero
+ 		jnz	locloop_33
  		pop	ax
  		or	ah,80h
- 		jmp	loc_24			; (0312)
+ 		jmp	I14_exit		; (0312)
 loc_34:						;  xref A.03CF
  		sub	dx,2
  		pop	ax
  		out	dx,al			; port 0, DMA-1 bas&add ch 0
- 		jmp	loc_24			; (0312)
+ 		jmp	I14_exit		; (0312)
+
+; Receive
 loc_35:						;  xref A.0308
 ; 		and	byte ptr ds:[71h],7Fh	; (A.0071=0) signbit
 		and	byte ptr ds:[signbit],7Fh
  		add	dx,2
  		mov	al,37h			; '7'
  		out	dx,al			; port 2, DMA-1 bas&add ch 1
- 		xor	cx,cx			; Zero register
+ 		xor	cx,cx
  		mov	bl,4
 
 ;a.03f5
 locloop_36:					;  xref A.03FA, 03FE
  		in	al,dx			; port 2, DMA-1 bas&add ch 1
  		test	al,80h
- 		jnz	loc_38			; Jump if not zero
+ 		jnz	loc_38	
  		loop	locloop_36		; Loop if cx > 0
 
  		dec	bl
- 		jnz	locloop_36		; Jump if not zero
+ 		jnz	locloop_36
 loc_37:						;  xref A.0411
  		mov	ah,80h
- 		jmp	loc_24			; (0312)
+ 		jmp	I14_exit			; (0312)
+
 loc_38:						;  xref A.03F8, 040F
  		in	al,dx			; port 2, DMA-1 bas&add ch 1
  		test	al,2
- 		jnz	loc_39			; Jump if not zero
+ 		jnz	loc_39	
 ; 		test	byte ptr ds:[71h],80h	; (A.0071=0)
 		test	byte ptr ds:[signbit],80h
- 		jz	loc_38			; Jump if zero
+ 		jz	loc_38	
  		jmp	short loc_37		; (0400)
+
+; checks for receive errors
 loc_39:						;  xref A.0408
- 		call	sub_5			; (0420)
+ 		call	SetSerErrFl			; (0420)
  		and	ah,00011110b		;1Eh
  		sub	dx,2
  		in	al,dx			; port 0, DMA-1 bas&add ch 0
- 		jmp	loc_24			; (0312)
+ 		jmp	I14_exit			; (0312)
 
 ;===============================================================================
  ;                              SUBROUTINE
  ;
  ;         Called from:   A.0413, 0458
 ;===============================================================================
-; Tests some variable for bit flags. Maybe serial errors?
+; Tests some variable for bit flags. Maybe serial errors? AL= line status reg
+; actual error bits are 7 (time out), 4 (BRK), 3 (FE), 2 (PE), 1 (OR). 
+; AH !=0 on error
+; Entry AL = status bits from the 8251
 ;a.0420
-sub_5		proc	near
+SetSerErrFl		proc	near
  		mov	ah,0
  		test	al,1
- 		jz	loc_40			; Jump if zero
- 		or	ah,20h			; ' '
+ 		jz	loc_40
+ 		or	ah,20h			; THRE
 loc_40:						;  xref A.0424
  		test	al,2
- 		jz	loc_41			; Jump if zero
- 		or	ah,1
+ 		jz	loc_41	
+ 		or	ah,1			; DR
 loc_41:						;  xref A.042B
  		test	al,4
- 		jz	loc_42			; Jump if zero
- 		or	ah,40h			; '@'
+ 		jz	loc_42	
+ 		or	ah,40h			; TSRE
 loc_42:						;  xref A.0432
  		test	al,8
- 		jz	loc_43			; Jump if zero
- 		or	ah,4
+ 		jz	loc_43	
+ 		or	ah,4			; PE
 loc_43:						;  xref A.0439
  		test	al,10h
- 		jz	loc_44			; Jump if zero
- 		or	ah,2
+ 		jz	loc_44	
+ 		or	ah,2			; OR
 loc_44:						;  xref A.0440
- 		test	al,20h			; ' '
- 		jz	loc_45			; Jump if zero
- 		or	ah,8
+ 		test	al,20h	
+ 		jz	loc_45
+ 		or	ah,8			; FE
 loc_45:						;  xref A.0447
- 		test	al,40h			; '@'
- 		jz	loc_ret_46		; Jump if zero
- 		or	ah,10h
+ 		test	al,40h	
+ 		jz	loc_ret_46
+ 		or	ah,10h			; BRK
 
 loc_ret_46:					;  xref A.044E
  		retn
-sub_5		endp
+SetSerErrFl		endp
 
+; Serial Status
 loc_47:						;  xref A.030F, 0388
  		add	dx,2
  		in	al,dx			; port 4, DMA-1 bas&add ch 2
- 		call	sub_5			; (0420)
- 		and	al,80h
+ 		call	SetSerErrFl		; (0420)
+ 		and	al,80h			; timeout bit
  		test	al,al
  		mov	al,0F0h
  		jnz	loc_48			; Jump if not zero
- 		mov	al,0
+ 		mov	al,0			; set MSR=0
 loc_48:						;  xref A.0461
- 		jmp	loc_24			; (0312)
+ 		jmp	I14_exit		; (0312)
 
 ;===============================================================================
  ;                              SUBROUTINE
@@ -1022,10 +1062,8 @@ loc_49:						;  xref A.0470
  		sti				; Enable interrupts
  		push	cx
  		xor	cx,cx			; Zero register
-
 locloop_50:					;  xref A.046C
  		loop	locloop_50		; Loop if cx > 0
-
  		pop	cx
  		dec	cx
  		jnz	loc_49			; Jump if not zero
@@ -1040,7 +1078,7 @@ sub_6		endp
 ;===============================================================================
 ; setup certain handlers to default to IRET and set equipment bits
 ;a.0473
-sub_7		proc	near
+InitEquipList	proc	near
  		push	ds
  		xor	ax,ax			; Zero register
  		mov	ds,ax
@@ -1071,7 +1109,7 @@ sub_7		proc	near
 ;	BIT 11,10,9 = NUMBER OF RS232 CARDS ATTACHED
 ;	BIT 8 UNUSED
 ;	BIT 7,6 = NUMBER OF DISKETTE DRIVES
-;		00=1, 01=2, 10-3, 11=4 ONLY IF BIT 0 = 1
+;		00=1, 01=2, 10=3, 11=4 ONLY IF BIT 0 = 1
 ;	BIT 5,4 = INITIAL VIDEO MODE
 ;			00 - UNUSED
 ;			01 - 40X25 BW USING COLOR CARD
@@ -1085,7 +1123,7 @@ sub_7		proc	near
  		mov	ds:equip_bits,ax	; (0040:0010=4467h)
  		pop	ds
  		retn
-sub_7		endp
+InitEquipList	endp
 
 
 ;===============================================================================
@@ -1095,7 +1133,7 @@ sub_7		endp
 ;===============================================================================
 ; setup default handlers 08h, 0ch, and 1ah.
 ;a.04b5
-sub_8		proc	near
+InitTimers	proc	near
  		push	ds
  		pushf				; Push flags
  		cli				; Disable interrupts
@@ -1126,7 +1164,7 @@ loc_51:
 
 locloop_52:					;  xref A.04FE
  		lods	byte ptr cs:[si]	; String [si] to al
- 		out	43h,al			; port 43h, 8253 timer control
+ 		out	43h,al			; port 43h, 8253 timer control C58253CTL
  		lods	byte ptr cs:[si]	; String [si] to al
  		out	dx,al			; port 40h, 8253 timer 0 clock
  		lods	byte ptr cs:[si]	; String [si] to al
@@ -1140,17 +1178,19 @@ locloop_52:					;  xref A.04FE
  		popf				; Pop flags
  		pop	ds
  		retn
-sub_8		endp
+InitTimers	endp
 
 ; 80186 timer 0 configuration bytes
 ;a.050a
 data_82:	db	36h, 00h, 00h, 76h,0A9h, 04h,0B6h
 
+;===============================================================================
 ; a.0511
+; (80186 INT1 Handler)
 INT0CHANDLER:
- 		test	ax,5004h
+ 		test	ax,5004h		; 01100000-00000100
  		push	dx
- 		mov	ax,8000h
+ 		mov	ax,8000h		; 10000000-00000000
  		mov	dx,0FF22h		;PCRBASE+ICR+EOIREG
  		out	dx,ax
  		pop	dx
@@ -1158,7 +1198,9 @@ INT0CHANDLER:
  		INT	08h 
  		iret
 
+;===============================================================================
 ;a.0521
+; INT 08 - Hardware Timer Tick
 INT08HANDLER:
  		push	ax
  		push	dx
@@ -1187,7 +1229,9 @@ loc_55:							;  xref A.0557
  		pop	ax
  		iret				; Interrupt return
 
+;===============================================================================
 ;a.0562
+; INT 1A - Time-of-Day/RTC
 INT1AHANDLER:
  		push	ds
  		cli				; Disable interrupts
@@ -1216,10 +1260,13 @@ loc_58:							;  xref A.0571
  		jmp	short loc_56			; (0573)
  DefIRET:	iret	
 
+;===============================================================================
+; Dynamic Halt
  DynHalt:					;  xref A.004B, 0598
  		cli				; Disable interrupts
  		jmp	short DynHalt		; (0597)
 
+;===============================================================================
 ;a.059a
 ;* No entry point to code
 ; Doesn't seem to have an absolute reference anywhere
@@ -1270,15 +1317,15 @@ locloop_65:					;  xref A.05BE
 ; should ax,cx be preserved?
 BEEP		proc	near
  		mov	al,0B6h
- 		out	43h,al			; port 43h, 8253 timer control
+ 		out	43h,al			; port 43h, 8253 timer control C58253CTL
  		mov	ax,533h
- 		out	42h,al			; port 42h, 8253 timer 2 spkr
+ 		out	42h,al			; port 42h, 8253 timer 2 spkr C5TIMER2
  		mov	al,ah
- 		out	42h,al			; port 42h, 8253 timer 2 spkr
- 		in	al,61h			; port 61h, 8255 port B, read
+ 		out	42h,al			; port 42h, 8253 timer 2 spkr C5TIMER2
+ 		in	al,61h			; port 61h, 8255 port B, read C58255PB
  		mov	ah,al
  		or	al,3
- 		out	61h,al			; port 61h, 8255 B - spkr, etc
+ 		out	61h,al			; port 61h, 8255 B - spkr, etc C58255PB
  		sub	cx,cx
 
 BEEP_1:						;  xref A.05DA, 05DE
@@ -1286,7 +1333,7 @@ BEEP_1:						;  xref A.05DA, 05DE
  		dec	bl
  		jnz	BEEP_1			; Jump if not zero
  		mov	al,ah
- 		out	61h,al			; port 61h, 8255 B - spkr, etc
+ 		out	61h,al			; port 61h, 8255 B - spkr, etc C58255PB
  		retn
 BEEP		endp
 
@@ -1321,7 +1368,7 @@ loc_ret_68:					;  xref A.05EB
 ;===============================================================================
 ;a.05f6
 ; grab disk vectors and second serial hardware IRQ
-sub_11		proc	near
+InitFloppy	proc	near
  		push	ds
  		xor	ax,ax			; Zero register
  		mov	ds,ax
@@ -1336,10 +1383,11 @@ sub_11		proc	near
  		mov	word ptr ds:Int1Ev+2,cs	; (0000:007A=0F000h)
  		pop	ds
  		retn
-sub_11		endp
+InitFloppy	endp
 
+;===============================================================================
 ;a.061b
-; INT13 Handler
+; INT 13 - Diskette Services
 INT13HANDLER:
  		sti				; Enable interrupts
  		push	bx
@@ -1352,7 +1400,7 @@ INT13HANDLER:
  		mov	bp,sp
  		mov	si,40h
  		mov	ds,si
- 		call	sub_12			; (0649)
+ 		call	ProcDiskCmd		; (0649)
  		mov	bx,4
  		call	GetpDPB			; (0834)
  		mov	ds:dsk_motor_tmr,ah	; (0040:0040=0)
@@ -1374,45 +1422,57 @@ INT13HANDLER:
 ;         Called from:   A.062A
 ;===============================================================================
 ;a.0649
-; setup for disk call?
-sub_12		proc	near
+ProcDiskCmd	proc	near
  		mov	dh,al
  		mov	ds:gen_int_occured,al	; (0040:006B=0)
  		and	byte ptr ds:dsk_motor_stat,3Fh	; (0040:003F=0) '?'
  		mov	al,0FFh
  		mov	ds:dsk_motor_tmr,al	; (0040:0040=0)
- 		or	ah,ah			; Zero ?
- 		jz	loc_74			; Jump if zero
+
+; function dispatch
+; AH=0 reset AH=1 read status AH=2 read sectors AH=3 write AH=4 verify AH=5 format
+ 		or	ah,ah			; reset?
+ 		jz	cmdResetDisk		; reset the disk system
+
  		dec	ah
- 		jnz	loc_69			; Jump if not zero
- 		jmp	short loc_75		; (06BC)
+ 		jnz	proccmd1		; AH=2-5
+ 		jmp	short cmdDiskStat	; (06BC) read disk status
  		db	90h
-loc_69:						;  xref A.065E
+
+proccmd1:					;  xref A.065E
  		mov	byte ptr ds:dsk_ret_code,0	; (0040:0041=0)
- 		cmp	dl,4
- 		jae	loc_73			; Jump if above or =
- 		dec	ah
- 		jnz	loc_70			; Jump if not zero
- 		jmp	short loc_76		; (06C0)
+ 		cmp	dl,4			; only 4 drives allowed
+ 		jae	proccmd5		; Jump if above or =
+
+ 		dec	ah			;
+ 		jnz	proccmd2
+ 		jmp	short cmdDiskRD		; (06C0) read sectors
  		db	90h
-loc_70:						;  xref A.066F
+
+proccmd2:					;  xref A.066F
  		dec	ah
- 		jnz	loc_71			; Jump if not zero
- 		jmp	loc_80			; (0714)
-loc_71:						;  xref A.0676
+ 		jnz	proccmd3
+ 		jmp	cmdDiskWrt		; (0714) write
+
+proccmd3:					;  xref A.0676
  		dec	ah
- 		jnz	loc_72			; Jump if not zero
- 		jmp	short loc_77		; (06C7)
+ 		jnz	proccmd4
+ 		jmp	short cmdDiskVer	; (06C7) verify
  		db	90h
-loc_72:						;  xref A.067D
+
+proccmd4:					;  xref A.067D
  		dec	ah
- 		jnz	loc_73			; Jump if not zero
- 		jmp	short loc_78		; (06CE)
+ 		jnz	proccmd5
+ 		jmp	short cmdDiskFmt	; (06CE) format
  		db	90h
-loc_73:						;  xref A.066B, 0684
+
+proccmd5:					;  xref A.066B, 0684
  		mov	byte ptr ds:dsk_ret_code,1	; (0040:0041=0)
  		retn
-loc_74:						;  xref A.065A
+
+;===============================================================================
+; AH=0 reset the disk
+cmdResetDisk:					;  xref A.065A
  		call	sub_23			; (0A4C)
  		call	sub_26			; (0A9E)
  		mov	ah,3
@@ -1427,18 +1487,30 @@ loc_74:						;  xref A.065A
  		call	sub_26			; (0A9E)
  		call	sub_19			; (09AD)
  		retn
-loc_75:						;  xref A.0660
+
+;===============================================================================
+; AH=1 get disk status
+cmdDiskStat:					;  xref A.0660
  		mov	al,byte ptr ds:[dsk_ret_code]	; (A.0041=0B9h)
  		retn
+
+;===============================================================================
+; AH=2 read sectors
 ;a.06c0
-loc_76:						;  xref A.0671, 06CC
+cmdDiskRD:					;  xref A.0671, 06CC
  		call	sub_18			; (08E7)
  		mov	ah,66h			; 'f'
  		jmp	short loc_81		; (071E)
-loc_77:						;  xref A.067F
+
+;===============================================================================
+; AH=4 verify sectors
+cmdDiskVer:					;  xref A.067F
  		or	byte ptr ds:dsk_motor_stat,40h	; (0040:003F=0) '@'
- 		jmp	short loc_76		; (06C0)
-loc_78:						;  xref A.0686
+ 		jmp	short cmdDiskRD		; (06C0)
+
+;===============================================================================
+; AH=5 format sectors
+cmdDiskFmt:					;  xref A.0686
  		or	byte ptr ds:dsk_motor_stat,80h	; (0040:003F=0)
  		call	sub_18			; (08E7)
  		mov	ah,4Dh			; 'M'
@@ -1471,8 +1543,11 @@ loc_79:						;  xref A.075C
  		call	GetpDPB			; (0834)
  		jmp	short loc_85		; (078F)
  		db	90h
+
+;===============================================================================
+; AH=3 write sectors
 ;a.0714
-loc_80:						;  xref A.0678
+cmdDiskWrt:						;  xref A.0678
  		or	byte ptr ds:[dsk_motor_stat],80h	; (A.003F=0F3h)
  		call	sub_18			; (08E7)
  		mov	ah,45h			; 'E'
@@ -1569,6 +1644,7 @@ loc_88:						;  xref A.07AB, 07B3, 07B9, 07C1
 
 loc_ret_89:					;  xref A.0797
  		retn
+
 ;a.07d9
 loc_90:						;  xref A.0792
  		call	sub_23			; (0A4C)
@@ -1579,10 +1655,11 @@ loc_91:						;  xref A.07A0
  		call	sub_27			; (0AB2)
  		xor	ah,ah			; Zero register
  		retn
-sub_12		endp
+ProcDiskCmd	endp
 
+;===============================================================================
 ;a.07e9
-; Int0B hardware IQR
+; INT 0B - 80186 DMA1 Handler
 INT0BHANDLER:				
  		push	ax
  		push	bx
@@ -1928,19 +2005,22 @@ loc_113:					;  xref A.09A2
  		stc				; Set carry flag
  		retn
 
+
 ;===============================================================================
  ;                              SUBROUTINE
  ;
  ;         Called from:   A.0559, 06B8
 ;===============================================================================
-; since boards don't have standard PC-compatible port addresses, not sure
-; what this is for.
 ;a.09ad
+; PPI Control Word. Bit7=0 for bit-set-reset mode. D6-D4 is do not care.
+;	D3-D1 is 3-to-8 encoded for which bit of port C. Bit 0 is 0=reset 1=set
+; 	7  6  5  4  3  2  1  0
+;	MD -portA-  -portBC- S/R
 sub_19		proc	near
  		push	ax
  		push	dx
- 		mov	al,5
- 		out	0D6h,al			; port 0D6h
+ 		mov	al,%00000101		;5 PC2 set LP_INIT=H
+ 		out	0D6h,al			; port 0D6h PPI_CR
  		pop	dx
  		pop	ax
  		retn
@@ -1952,14 +2032,13 @@ sub_19		endp
  ;
  ;         Called from:   A.0731
 ;===============================================================================
-; since boards don't have standard PC-compatible port addresses, not sure
-; what this is for.
 ;a.09b6
+; See notes on sub_19
 sub_20		proc	near
  		push	ax
  		push	dx
- 		mov	al,4
- 		out	0D6h,al			; port 0D6h
+ 		mov	al,%00000100		;4 PC2 reset LP_INIT=L
+ 		out	0D6h,al			; port 0D6h PPI_CR
  		pop	dx
  		pop	ax
  		retn
@@ -1971,10 +2050,8 @@ sub_20		endp
  ;
  ;         Called from:   A.078F, 098C
 ;===============================================================================
- ; Configure DMA1
- ; since boards don't have standard PC-compatible port addresses, not sure
-; what this is for.
-;a.09ad09bf
+; Configure DMA1
+;a.09ad-09bf
 sub_21		proc	near
  		push	ax
  		push	bx
@@ -2027,8 +2104,7 @@ sub_21		endp
  ;
  ;         Called from:   A.0794, 07DC, 0996
 ;===============================================================================
-; since boards don't have standard PC-compatible port addresses, not sure
-; what this is for.
+; Port 90h is the base address of the floppy
 ;a.0a08
 sub_22		proc	near
  		cld				; Clear direction
@@ -2042,7 +2118,7 @@ loc_117:					;  xref A.0A44
  		mov	dx,90h
 
 locloop_118:					;  xref A.0A1B
- 		in	al,dx			; port 90h ??I/O Non-standard
+ 		in	al,dx			; port 90h FDCBASE
  		test	al,80h
  		jnz	loc_120			; Jump if not zero
  		loop	locloop_118		; Loop if cx > 0
@@ -2091,17 +2167,16 @@ sub_22		endp
  ;
  ;         Called from:   A.068F, 07D9, 07EE, 08E0, 09E1
 ;===============================================================================
-; since boards don't have standard PC-compatible port addresses, not sure
-; what this is for.
+; bit set/reset on PPI port C PC7 goes to floppy write clock circuit
 ;a.0a4c
 sub_23		proc	near
  		push	ax
- 		mov	al,0Dh
- 		out	0D6h,al			; port 0D6h
+ 		mov	al,%00001101		;0Dh PC7 set
+ 		out	0D6h,al			; port 0D6h PPI_CR
  		push	ax
  		pop	ax
  		mov	al,0Ch
- 		out	0D6h,al			; port 0D6h
+ 		out	0D6h,al			; port 0D6h PPI_CR
  		pop	ax
  		retn
 sub_23		endp
@@ -2216,8 +2291,10 @@ loc_132:					;  xref A.0ABA
  		retn
 sub_27		endp
 
-; Diskette parameter table
+
+;===============================================================================
 ;a.0ac9
+; INT 1E - Diskette parameter table
 INT_1E:
 	db      11011111b	; specify byte 1: step rate (ms), head unload time (ms)
 				; 7:4 step 0E = 4ms
@@ -2243,7 +2320,7 @@ INT_1E:
 ;===============================================================================
 ; grab keyboard vectors
 ;a.0ad4
-sub_28		proc	near
+InitKeyboard	proc	near
  		push	ds
  		pushf				; Push flags
  		cli				; Disable interrupts
@@ -2258,15 +2335,18 @@ sub_28		proc	near
  		mov	ax,offset INT09HANDLER	;0CF2h
  		mov	ds:Int09v,ax		; (0000:0024=0E987h)
  		mov	ds:Int09v+2,cs		; (0000:0026=0F000h)
+
  		mov	ax,40h
  		mov	ds,ax
- 		mov	ax,1Eh
+ 		mov	ax,1Eh			; keyboard queue
  		mov	ds:keybd_q_head,ax	; (0040:001A=30h)
  		mov	ds:keybd_q_tail,ax	; (0040:001C=30h)
+
  		xor	ax,ax			; Zero register
  		mov	ds:keybd_flags_1,al	; (0040:0017=0)
  		mov	ds:keybd_flags_2,al	; (0040:0018=0)
  		mov	ds:keybd_alt_num,al	; (0040:0019=0)
+
  		mov	dx,0FF3Ah		;PCRBASE+ICR+INT1CR
  		mov	ax,1
  		out	dx,ax			; port 0FF3Ah ??I/O Non-standard
@@ -2274,42 +2354,55 @@ sub_28		proc	near
  		out	63h,al			; port 63h, 8255 mode reg
  		mov	al,0C0h
  		out	61h,al			; port 61h, 8255 B - spkr, etc
- 		call	sub_29			; (0B6E)
+ 		call	InitKbdCtrlr		; (0B6E)	reset kbd
  		popf				; Pop flags
  		pop	ds
  		retn
-sub_28		endp
+InitKeyboard	endp
 
+
+;===============================================================================
 ;a.0b27
+; INT 16 - Keyboard Services
 INT16HANDLER:
  		sti				; Enable interrupts
  		push	ds
  		push	bx
  		mov	bx,40h
  		mov	ds,bx
- 		or	ah,ah			; Zero ?
- 		jz	loc_134			; Jump if zero
- 		dec	ah
- 		jz	loc_135			; Jump if zero
- 		dec	ah
- 		jz	loc_136			; Jump if zero
+
+; dispatcher
+; AH=0 read char AH=1 check AH=2 shift
+ 		or	ah,ah			; Zero - read character
+ 		jz	cmdKbdChrIn	
+
+ 		dec	ah			; check for character
+ 		jz	cmdKbdChk	
+
+ 		dec	ah			; shift state
+ 		jz	cmdKbdShift	
+
  		pop	bx
  		pop	ds
  		iret				; Interrupt return
-loc_134:					;  xref A.0B31, 0B49
+
+; read character
+cmdKbdChrIn:					;  xref A.0B31, 0B49
  		sti				; Enable interrupts
  		nop
  		cli				; Disable interrupts
  		mov	bx,word ptr ds:[keybd_q_head]	; (A.001A=3538h)
  		cmp	bx,word ptr ds:[keybd_q_tail]	; (A.001C=0D0Ah)
- 		je	loc_134			; Jump if equal
+ 		je	cmdKbdChrIn	
  		mov	ax,[bx]
  		call	sub_30			; (0BD3)
  		mov	word ptr ds:[keybd_q_head],bx	; (A.001A=3538h)
  		pop	bx
  		pop	ds
  		iret				; Interrupt return
-loc_135:					;  xref A.0B35
+
+; check for available char
+cmdKbdChk:					;  xref A.0B35
  		cli				; Disable interrupts
  		mov	bx,word ptr ds:[keybd_q_head]	; (A.001A=3538h)
  		cmp	bx,word ptr ds:[keybd_q_tail]	; (A.001C=0D0Ah)
@@ -2318,11 +2411,14 @@ loc_135:					;  xref A.0B35
  		pop	bx
  		pop	ds
  		retf	2			; Return far
-loc_136:					;  xref A.0B39
+
+; get shift state
+cmdKbdShift:					;  xref A.0B39
  		mov	al,byte ptr ds:[keybd_flags_1]	; (A.0017=32h)
  		pop	bx
  		pop	ds
  		iret				; Interrupt return
+
 
 ;===============================================================================
  ;                              SUBROUTINE
@@ -2330,7 +2426,8 @@ loc_136:					;  xref A.0B39
  ;         Called from:   A.0B21
 ;===============================================================================
 ;a.0b6e
-sub_29		proc	near
+; Looks like this initialzies the keyboard controller in the keyboard itself.
+InitKbdCtrlr		proc	near
  		cli				; Disable interrupts
  		in	al,61h			; port 61h, 8255 port B, read
  		and	al,3Fh			; '?'
@@ -2379,7 +2476,7 @@ loc_139:					;  xref A.0B8F, 0BA3
  		out	61h,al			; port 61h, 8255 B - spkr, etc
  		stc				; Set carry flag
  		retn
-sub_29		endp
+InitKbdCtrlr		endp
 
 msg5:		db	'Keyboard reset failure', 0Ah, 0Dh,0
 
@@ -2485,7 +2582,9 @@ data_86:	db	1Bh, '1234567890-=', 8, 9, 'qwert'	;  xref A.0F2D
 		db	71,72,73,-1,75,-1,77
 		db	-1,79,80,81,82,83
  
+;===============================================================================
 ;a.0ce4
+; INT 0D - 80186 INT1 Handler
 INT0DHANDLER:
 ; 	db	 50h, 52h
 ;    	db	0B8h, 00h, 80h,0BAh, 22h,0FFh
@@ -2500,7 +2599,10 @@ INT0DHANDLER:
  		int	09
  		iret
 
+
+;===============================================================================
 ;a.0cf2
+; INT 09 - Reserved
 INT09HANDLER:
 ;     	db	 50h, 53h, 51h, 52h, 56h, 57h
 ;     	db	 1Eh, 06h,0FCh,0B8h, 40h, 00h
@@ -2625,8 +2727,10 @@ loc_152:					;  xref A.0D45, 0D7C, 0D88, 0D9D
  		pop	ax
  		iret				; Interrupt return
 
-; Ctrl-Alt-Del restart?
+;===============================================================================
 ;a.0dd4
+; Process warm boot keyboard combination Ctrl-Alt-Del
+;
 loc_153:					;  xref A.0DC0
  		test	byte ptr ds:[keybd_flags_1],8	; (A.0017=32h)
  		jnz	loc_154			; Jump if not zero
@@ -2639,6 +2743,7 @@ loc_154:					;  xref A.0DD9
  		mov	word ptr ds:[72h],1234h	; (A.0072=0FEB9h)
 		jmp	COLD2			;*(001F) go to cold restart
 ; 		db	0E9h, 2Dh,0F2h
+
 
 ;a.0df2
 data_88:	db	'ROPQKLMGHI'		;  xref A.0E1F
@@ -2838,6 +2943,7 @@ loc_188:					;  xref A.0F0B
  		mov	al,0
  		jmp	short loc_181		; (0F34)
 
+
 ;===============================================================================
  ;                              SUBROUTINE
  ;
@@ -2903,10 +3009,11 @@ sub_32		proc	near
  		retn
 sub_32		endp
 
-
+;===============================================================================
 ;	ENTRY   0F045h                          ; IBM entry point for table
-; INT10 function table
 ;a.0fd1
+; INT 10 - Video Dispatch table
+
 ;M1	LABEL	WORD	; TABLE OF ROUTINES WITHIN VIDEO I/O
 V_TABLE:	dw	offset SET_MODE			;  xref A.101B
 		dw	offset SET_CTYPE		;  xref A.101B
@@ -2927,7 +3034,7 @@ V_TABLE:	dw	offset SET_MODE			;  xref A.101B
 
 
 ;===============================================================================
-;  I N T  1 0 h  -  B I O S   V I D E O   S E R V I C E S
+;  INT 10h  -  B I O S   V I D E O   S E R V I C E S
 ;
 ;	Purpose:  INT 10h BIOS video services.
 ;	Entry  :	Registers	Function
@@ -2966,7 +3073,7 @@ INT10HANDLER:
 loc_192:
  		mov	ax,40h
  		mov	ds,ax
- 		mov	ax,0B800h
+ 		mov	ax,0B800h		; CGA memory
  		mov	es,ax
  		pop	ax
  		mov	ah,ds:video_mode	; (0040:0049=3)
@@ -2974,7 +3081,7 @@ loc_192:
 
 
 ;===============================================================================
-;  I N T  1 D h  -  V I D E O   M O D E S
+;  INT 1Dh  -  V I D E O   M O D E S
 ;
 ;	Purpose:  INT 1Dh BIOS video modes.
 ;	Entry  :	Registers	Function
@@ -3790,7 +3897,7 @@ loc_256:					;  xref A.131C, 133E
  		pop	ax
  		cmp	al,80h
  		jae	loc_257			; Jump if above or =
- 		mov	si,offset data_124	; (C000:176D=0)
+ 		mov	si,offset GRAFIX	; (C000:176D=0)
  		push	cs
  		jmp	short loc_258		; (14CF)
 loc_257:					;  xref A.14B8
@@ -3914,7 +4021,7 @@ loc_271:					;  xref A.15A0
  		dec	dh
  		jnz	loc_271			; Jump if not zero
 loc_272:					;  xref A.1589
- 		mov	di,offset data_124		; (C000:176D=0)
+ 		mov	di,offset GRAFIX		; (C000:176D=0)
  		push	cs
  		pop	es
  		sub	bp,8
@@ -4231,265 +4338,178 @@ loc_298:					;  xref A.16E5
  		pop	es
  		iret				; Interrupt return
 
- ; this doesn't seem to code for anything useful through 1C00, so
- ; maybe it's data tables of some sort
+;-----------------------------------------------------------------------
+;	CHARACTER GENERATOR GRAPHICS FOR 320X200 AND 640X200 GRAPHICS
+;-----------------------------------------------------------------------
+;	ORG	0FA6EH
+; Looks like it runs to FE6Dh (400h bytes) in the PC. Data is in 8-byte lines.
+; Cut and pasted from the PCBIOS because they're grouped in 8-byte lines and
+; have the character code. I edited certain ones to match CM5 (certain bytes
+; don't match - most are 7Eh swapped for 73h).
+
  ;a.176d
- data_124:	db	8 dup (0)
-     		db	 73h, 81h,0A5h, 81h,0BDh, 99h
-     		db	 81h, 73h, 73h,0FFh,0DBh,0FFh
-     		db	0C3h,0E7h,0FFh, 7Eh, 6Ch,0FEh
-     		db	0FEh,0FEh, 7Ch, 38h, 10h, 00h
-     		db	 10h, 38h, 7Ch,0FEh, 7Ch, 38h
-     		db	 10h, 08h, 38h, 7Ch, 38h,0FEh
-     		db	0FEh, 7Ch, 38h, 7Ch, 10h, 10h
- 		db	38h
-;a.17a0
-loc_299:					;  xref A.17A0
- 		jl	loc_299			; Jump if <
- 		jl	$+3Ah			; Jump if <
- 		jl	$+2			; delay for I/O
- 		add	[bx+si],bl
- 		cmp	al,3Ch			; '<'
- 		sbb	[bx+si],al
-; 		add	bh,bh
-		db	0, 0ffh
- 		jmp	di			;*
- 			                        ;* No entry point to code
- 		retn
- 			                        ;* No entry point to code
- 		retn
- 			                        ;* No entry point to code
- 		out	0FFh,ax			; port 0FFh ??I/O Non-standard
- 		inc	word ptr [bx+si]
- 		cmp	al,66h			; 'f'
- 		inc	dx
- 		inc	dx
-		db	 66h, 3Ch, 00h,0FFh,0C3h, 99h
-		db	0BDh,0B0h, 99h,0C3h,0FFh, 0Fh
-		db	 07h, 0Fh, 7Dh,0CCh,0CCh,0CCh
-		db	 78h, 3Ch, 66h, 66h, 66h, 3Ch
-		db	 18h, 7Eh, 18h, 3Fh, 3Fh, 3Fh
-		db	 30h, 30h, 70h,0F0h,0E0h, 7Fh
-		db	 63h, 7Fh, 63h, 63h, 67h,0E6h
-		db	0C0h, 99h, 5Ah, 3Ch,0E7h,0E7h
-		db	 3Ch, 5Ah, 99h, 80h,0E0h,0F8h
-		db	0FEh,0F8h,0E0h, 80h, 00h, 02h
-		db	 0Eh, 3Eh,0FEh, 3Eh, 0Eh, 02h
-		db	 00h, 18h, 3Ch, 7Eh, 18h, 18h
-		db	 7Eh, 3Ch, 18h, 66h, 66h, 66h
-		db	 66h, 66h, 00h, 66h, 00h, 7Fh
-		db	0DBh,0DBh, 7Bh, 1Bh, 1Bh, 1Bh
-		db	 00h, 3Eh, 63h, 38h, 6Ch, 6Ch
-		db	 38h,0CCh, 78h, 00h, 00h, 00h
-		db	 00h, 7Eh, 7Eh, 7Eh, 00h, 18h
-		db	 3Ch, 7Eh, 18h, 7Eh, 3Ch, 18h
-		db	0FFh, 18h, 3Ch, 7Eh, 18h, 18h
-		db	 18h, 18h, 00h, 18h, 18h, 18h
-		db	 18h, 73h, 3Ch, 18h, 00h, 00h
-		db	 18h, 0Ch,0FEh, 0Ch, 18h, 00h
-		db	 00h, 00h, 30h, 60h,0FEh, 60h
-		db	 30h, 00h, 00h, 00h, 00h,0C0h
-		db	0C0h,0C0h,0FEh, 00h, 00h, 00h
-		db	 24h, 66h,0FFh, 66h, 24h, 00h
-		db	 00h, 00h, 18h, 3Ch, 7Eh,0FFh
-		db	0FFh, 00h, 00h, 00h,0FFh,0FFh
-		db	 7Eh, 3Ch, 18h, 00h
- 		db	9 dup (0)
- 		db	 30h, 78h
-;a.1877		
-loc_300:
- ;*		js	loc_301			;*Jump if sign=1
- 		db	 78h, 30h
- 		xor	[bx+si],al
- 		xor	[bx+si],al
- 		insb				; Port dx to es:[di]
- 		insb				; Port dx to es:[di]
- 		insb				; Port dx to es:[di]
-		db	 00h, 00h, 00h, 00h, 00h, 6Ch
-		db	 6Ch,0FEh, 6Ch,0FEh, 6Ch, 6Ch
-		db	 00h, 30h, 7Ch,0C0h, 78h, 0Ch
-		db	0F8h, 30h, 00h, 00h,0C6h,0CCh
-		db	 18h, 30h, 66h,0C6h, 00h, 38h
-		db	 6Ch, 38h, 76h,0DCh,0CCh, 76h
-			db	 00h, 60h, 60h,0C0h, 00h
-		db	 00h, 00h, 00h, 00h, 18h, 30h
-		db	 60h, 60h, 60h, 30h, 18h, 00h
-		db	 60h, 30h, 18h, 18h, 18h, 30h
-		db	 60h, 00h, 00h, 66h, 3Ch,0FFh
-		db	 3Ch, 66h, 00h, 00h, 00h, 30h
- 		db	 30h,0FCh
- 		db	 30h, 30h
- 		db	7 dup (0)
-     		db	 30h, 30h, 60h, 00h, 00h, 00h
- 		db	0FCh
- 		db	9 dup (0)
-     		db	 30h, 30h, 00h, 06h, 0Ch, 18h
-     		db	 30h, 60h,0C0h, 80h, 00h, 7Ch
-		db	0C6h,0CEh,0DEh,0F6h,0E6h, 7Ch
- 		db	 00h
-     		db	 30h, 70h, 30h, 30h, 30h, 30h
-loc_302:					;  xref A.192D
- 		cld				; Clear direction
- 		add	[bx+si-34h],bh
- ;a.18fe
- ;loc_303:
- ;		int	3
- 		or	al,38h			; '8'
- 		pusha				; Save all regs
- 		int	3			; Debug breakpoint
-loc_304:					;  xref A.1935
- 		cld				; Clear direction
- 		add	[bx+si-34h],bh
- 		or	al,38h			; '8'
- 		or	al,0CCh
- 		js	$+2			; delay for I/O
- 		sbb	al,3Ch			; '<'
- 		insb				; Port dx to es:[di]
- 		int	3			; Debug breakpoint
- 		dec	byte ptr [si]
- 		push	ds
-; 		add	ah,bh
-		db	0, 0fch
- 		sar	al,0Ch			; Shift w/sign fill
- 		or	al,0CCh
- 		js	$+2			; delay for I/O
- 		cmp	[bx+si-40h],ah
- 		clc				; Clear carry flag
- 		int	3			; Debug breakpoint
- 		int	3			; Debug breakpoint
- 		js	$+2			; delay for I/O
- 		cld				; Clear direction
- 		int	3			; Debug breakpoint
- 		or	al,18h
- 		xor	[bx+si],dh
- 		xor	[bx+si],al
- 		js	loc_302			; Jump if sign=1
- 		int	3			; Debug breakpoint
- ;*		js	loc_303		;*Jump if sign=1 18fe
- 		db	 78h,0CCh
- 		int	3			; Debug breakpoint
- 		js	loc_305			; Jump if sign=1
-loc_305:					;  xref A.1933
- 		js	loc_304			; Jump if sign=1
- 		int	3			; Debug breakpoint
- 		jl	loc_306			; Jump if <
- ;*		sbb	[bx+si+0],dh
- 		db	 18h, 70h, 00h
-     		db	 00h, 30h, 30h, 00h, 00h, 30h
- 		db	 30h, 00h, 00h
-;a.1946
-loc_306:					;  xref A.1938
- 		xor	[bx+si],dh
- 		add	[bx+si],al
- 		xor	[bx+si],dh
- 		pusha				; Save all regs
- 		sbb	[bx+si],dh
- 		pusha				; Save all regs
- 		shl	byte ptr [bx+si+30h],18h	; Shift w/zeros fill
- 		add	[bx+si],al
-; 		add	ah,bh
-		db	0, 0fch
- 		add	[bx+si],al
- 		cld				; Clear direction
- 		add	[bx+si],al
- 		pusha				; Save all regs
- 		xor	[bx+si],bl
- 		or	al,18h
- ;*		xor	[bx+si+0],ah
- 		db	 30h, 60h, 00h
-		db	 78h,0CCh, 0Ch, 18h, 30h, 00h
-		db	 30h, 00h, 7Ch,0C6h,0DEh,0DEh
-		db	0DEh,0C0h, 78h, 00h, 30h, 78h
-		db	0CCh,0CCh,0FCh,0CCh,0CCh, 00h
-		db	0FCh, 66h, 66h, 7Ch, 66h, 66h
-		db	0FCh, 00h, 3Ch, 66h,0C0h,0C0h
-		db	0C0h, 66h, 3Ch, 00h,0F8h, 6Ch
-		db	 66h, 66h, 66h, 6Ch,0F8h, 00h
-		db	0FEh, 62h, 68h, 78h, 68h, 62h
-		db	0FEh, 00h,0FEh, 62h, 68h, 78h
-		db	 68h, 60h,0F0h, 00h, 3Ch, 66h
-		db	0C0h,0C0h,0CEh, 66h, 3Eh, 00h
-		db	0CCh,0CCh,0CCh,0FCh,0CCh,0CCh
-		db	0CCh, 00h, 78h, 30h, 30h, 30h
-		db	 30h, 30h, 78h, 00h, 1Eh, 0Ch
-		db	 0Ch, 0Ch,0CCh,0CCh, 78h, 00h
-		db	0E6h, 66h, 6Ch, 78h, 6Ch, 66h
-		db	0E6h, 00h,0F0h, 60h, 60h, 60h
-		db	 62h, 66h,0FEh, 00h,0C6h,0EEh
-		db	0FEh,0FEh,0D6h,0C6h,0C6h, 00h
-		db	0C6h,0E6h,0F6h,0DEh,0CEh,0C6h
-		db	0C6h, 00h, 38h, 6Ch,0C6h,0C6h
-		db	0C6h, 6Ch, 38h, 00h,0FCh, 66h
-		db	 66h, 7Ch, 60h, 60h,0F0h, 00h
-		db	 78h,0CCh,0CCh,0CCh,0DCh, 78h
-		db	 1Ch, 00h,0FCh, 66h, 66h, 7Ch
-		db	 6Ch, 66h,0E6h, 00h, 78h,0CCh
-		db	0E0h, 70h, 1Ch,0CCh, 78h, 00h
-		db	0FCh,0B4h, 30h, 30h, 30h, 30h
-		db	 78h, 00h,0CCh,0CCh,0CCh,0CCh
-		db	0CCh,0CCh,0FCh, 00h,0CCh,0CCh
-		db	0CCh,0CCh,0CCh, 78h,0C0h, 00h
-		db	0C6h,0C6h,0C6h,0D6h,0FEh,0EEh
-		db	0C6h, 00h,0C6h,0C6h, 6Ch, 38h
-		db	 38h, 6Ch,0C6h, 00h,0CCh,0CCh
-		db	0CCh, 78h, 30h, 30h, 78h, 00h
-		db	0FEh,0C6h, 8Ch, 18h, 32h, 66h
-		db	0FEh, 00h, 78h, 60h, 60h, 60h
-		db	 60h, 60h, 78h, 00h,0C0h, 60h
-		db	 30h, 18h, 0Ch, 06h, 02h, 00h
-		db	 78h, 18h, 18h, 18h, 18h, 18h
-		db	 78h, 00h, 10h, 38h, 6Ch,0C6h
-		db	 00h, 00h
-		db	9 dup (0)
-		db	0FFh, 30h, 30h
-;a.1a6f
-loc_308:
- 		sbb	[bx+si],al
-		db	 00h, 00h, 00h, 00h, 00h, 00h
-		db	 78h, 0Ch, 7Ch,0CCh, 76h, 00h
-		db	0E0h, 60h, 60h, 7Ch, 66h, 66h
-		db	0DCh, 00h, 00h, 00h, 78h,0CCh
-		db	0C0h,0CCh, 78h, 00h, 1Ch, 0Ch
-		db	 0Ch, 7Ch,0CCh,0CCh, 76h, 00h
-		db	 00h, 00h, 78h,0CCh,0FCh,0C0h
-		db	 78h, 00h, 38h, 6Ch, 60h,0F0h
-		db	 60h, 60h,0F0h, 00h, 00h, 00h
-		db	 76h,0CCh,0CCh, 7Ch, 0Ch,0F8h
-		db	0E0h, 60h, 6Ch, 76h, 66h, 66h
-		db	0E6h, 00h, 30h, 00h, 70h, 30h
-		db	 30h, 30h, 78h, 00h, 0Ch, 00h
-		db	 0Ch, 0Ch, 0Ch,0CCh,0CCh, 78h
-		db	0E0h, 60h, 66h, 6Ch, 78h, 6Ch
-		db	0E6h, 00h, 70h, 30h, 30h, 30h
-		db	 30h, 30h, 78h, 00h, 00h, 00h
-		db	0CCh,0FEh,0FEh,0D6h,0C6h, 00h
-		db	 00h, 00h,0F8h,0CCh,0CCh,0CCh
-		db	0CCh, 00h, 00h, 00h, 78h,0CCh
-		db	0CCh,0CCh, 78h, 00h, 00h, 00h
-		db	0DCh, 66h, 66h, 7Ch, 60h,0F0h
-		db	 00h, 00h, 76h,0CCh,0CCh, 7Ch
-		db	 0Ch, 1Eh, 00h, 00h,0DCh, 76h
-		db	 66h, 60h,0F0h, 00h, 00h, 00h
-		db	 7Ch,0C0h, 78h, 0Ch,0F8h, 00h
-		db	 10h, 30h, 7Ch, 30h, 30h, 34h
-		db	 18h, 00h, 00h, 00h,0CCh,0CCh
-		db	0CCh,0CCh, 76h, 00h, 00h, 00h
-		db	0CCh,0CCh,0CCh, 78h, 30h, 00h
-		db	 00h, 00h,0C6h,0D6h,0FEh,0FEh
-		db	 6Ch, 00h, 00h, 00h,0C6h, 6Ch
-		db	 38h, 6Ch,0C6h, 00h, 00h, 00h
-		db	0CCh,0CCh,0CCh, 7Ch, 0Ch,0F8h
-		db	 00h, 00h,0FCh, 98h, 30h, 64h
-		db	0FCh, 00h, 1Ch, 30h, 30h,0E0h
-		db	 30h, 30h, 1Ch, 00h, 18h, 18h
-		db	 18h, 00h, 18h, 18h, 18h, 00h
-		db	0E0h, 30h, 30h, 1Ch, 30h, 30h
-		db	0E0h, 00h, 76h,0DCh
- 		db	7 dup (0)
-;a.1b66
-     		db	 10h, 38h, 6Ch,0C6h,0C6h,0FEh
-;a.1b6c
-; 		db	148 dup (0)		; should end @1bff
+GRAFIX:
+		db	000H,000H,000H,000H,000H,000H,000H,000H ; D_00 x
+		db	073H,081H,0A5H,081H,0BDH,099H,081H,073H ; D_01 x
+		db	073H,0FFH,0DBH,0FFH,0C3H,0E7H,0FFH,07EH ; D_02 x
+		db	06CH,0FEH,0FEH,0FEH,07CH,038H,010H,000H ; D_03 x 
+
+		db	010H,038H,07CH,0FEH,07CH,038H,010H,008H ; D_04 x
+		db	038H,07CH,038H,0FEH,0FEH,07CH,038H,07CH ; D_05 x
+		db	010H,010H,038H,07CH,0FEH,07CH,038H,07CH ; D_06 x
+		db	000H,000H,018H,03CH,03CH,018H,000H,000H ; D_07 x
+
+		db	0FFH,0FFH,0E7H,0C3H,0C3H,0E7H,0FFH,0FFH ; D_08 x
+		db	000H,03CH,066H,042H,042H,066H,03CH,000H ; D_09 x
+		db	0FFH,0C3H,099H,0BDH,0BDH,099H,0C3H,0FFH ; D_0A x
+		db	00FH,007H,00FH,07DH,0CCH,0CCH,0CCH,078H ; D_08 x
+
+		db	03CH,066H,066H,066H,03CH,018H,07EH,018H ; D_0C x
+		db	03FH,03FH,03FH,030H,030H,070H,0F0H,0E0H ; D_0D x
+		db	07FH,063H,07FH,063H,063H,067H,0E6H,0C0H ; D_0E x
+		db	099H,05AH,03CH,0E7H,0E7H,03CH,05AH,099H ; D_0F x
+
+		db	080H,0E0H,0F8H,0FEH,0F8H,0E0H,080H,000H ; D_10
+		db	002H,00EH,03EH,0FEH,03EH,00EH,002H,000H ; D_11
+		db	018H,03CH,07EH,018H,018H,07EH,03CH,018H ; D_12
+		db	066H,066H,066H,066H,066H,000H,066H,000H ; D_13
+		
+		db	07FH,0DBH,0DBH,07BH,01BH,01BH,01BH,000H ; D_14
+		db	03EH,063H,038H,06CH,06CH,038H,0CCH,078H ; D_15
+		db	000H,000H,000H,000H,07EH,07EH,07EH,000H ; D_16
+		db	018H,03CH,07EH,018H,07EH,03CH,018H,0FFH ; D_17
+
+		db	018H,03CH,07EH,018H,018H,018H,018H,000H ; D_18
+		db	018H,018H,018H,018H,07EH,03CH,018H,000H ; D_19
+		db	000H,018H,00CH,0FEH,00CH,018H,000H,000H ; D_1A
+		db	000H,030H,060H,0FEH,060H,030H,000H,000H ; D_1B
+
+		db	000H,000H,0C0H,0C0H,0C0H,0FEH,000H,000H ; D_1C
+		db	000H,024H,066H,0FFH,066H,024H,000H,000H ; D_1D
+		db	000H,018H,03CH,07EH,0FFH,0FFH,000H,000H ; D_1E
+		db	000H,0FFH,0FFH,07EH,03CH,018H,000H,000H ; D_1F
+
+		db	000H,000H,000H,000H,000H,000H,000H,000H ; SP D_20
+		db	030H,078H,078H,030H,030H,000H,030H,000H ; ! D_21
+		db	06CH,06CH,06CH,000H,000H,000H,000H,000H ; " D_22
+		db	06CH,06CH,0FEH,06CH,0FEH,06CH,06CH,000H ; # D_23
+
+		db	030H,07CH,0C0H,078H,00CH,0F8H,030H,000H ; $ D_24
+		db	000H,0C6H,0CCH,018H,030H,066H,0C6H,000H ; PER CENT D_25
+		db	038H,06CH,038H,076H,0DCH,0CCH,076H,000H ; & D_26
+		db	060H,060H,0C0H,000H,000H,000H,000H,000H ; ' D_27
+
+		db	018H,030H,060H,060H,060H,030H,018H,000H ; ( D_28
+		db	060H,030H,018H,018H,018H,030H,060H,000H ; ) D_29
+		db	000H,066H,03CH,0FFH,03CH,066H,000H,000H ; * D_2A
+		db	000H,030H,030H,0FCH,030H,030H,000H,000H ; + D_2B
+
+		db	000H,000H,000H,000H,000H,030H,030H,060H ; , D_2C
+		db	000H,000H,000H,0FCH,000H,000H,000H,000H ; - D_2D
+		db	000H,000H,000H,000H,000H,030H,030H,000H ; . D_2E
+		db	006H,00CH,018H,030H,060H,0C0H,080H,000H ; / D_2F
+
+		db	07CH,0C6H,0CEH,0DEH,0F6H,0E6H,07CH,000H ; 0 D_30
+		db	030H,070H,030H,030H,030H,030H,0FCH,000H ; 1 D_31
+		db	078H,0CCH,00CH,038H,060H,0CCH,0FCH,000H ; 2 D_32
+		db	078H,0CCH,00CH,038H,00CH,0CCH,078H,000H ; 3 D_33
+
+		db	01CH,03CH,06CH,0CCH,0FEH,00CH,01EH,000H ; 4 D_34
+		db	0FCH,0C0H,0F8H,00CH,00CH,0CCH,078H,000H ; 5 D_35
+		db	038H,060H,0C0H,0F8H,0CCH,0CCH,078H,000H ; 6 D_36
+		db	0FCH,0CCH,00CH,018H,030H,030H,030H,000H ; 7 D_37
+
+		db	078H,0CCH,0CCH,078H,0CCH,0CCH,078H,000H ; 8 D_38
+		db	078H,0CCH,0CCH,07CH,00CH,018H,070H,000H ; 9 D_39
+		db	000H,030H,030H,000H,000H,030H,030H,000H ; : D_3A
+		db	000H,030H,030H,000H,000H,030H,030H,060H ; ; D_3B
+
+		db	018H,030H,060H,0C0H,060H,030H,018H,000H ; < D_3C
+		db	000H,000H,0FCH,000H,000H,0FCH,000H,000H ; = D_3D
+		db	060H,030H,018H,00CH,018H,030H,060H,000H ; > D_3E
+		db	078H,0CCH,00CH,018H,030H,000H,030H,000H ; ? D_3F
+
+		db	07CH,0C6H,0DEH,0DEH,0DEH,0C0H,078H,000H ; @ D_40
+		db	030H,078H,0CCH,0CCH,0FCH,0CCH,0CCH,000H ; A D_41
+		db	0FCH,066H,066H,07CH,066H,066H,0FCH,000H ; B D_42
+		db	03CH,066H,0C0H,0C0H,0C0H,066H,03CH,000H ; C D_43
+
+		db	0F8H,06CH,066H,066H,066H,06CH,0F8H,000H ; D D_44
+		db	0FEH,062H,068H,078H,068H,062H,0FEH,000H ; E D_45
+		db	0FEH,062H,068H,078H,068H,060H,0F0H,000H ; F D_46
+		db	03CH,066H,0C0H,0C0H,0CEH,066H,03EH,000H ; G D_47
+
+		db	0CCH,0CCH,0CCH,0FCH,0CCH,0CCH,0CCH,000H ; H D_48
+		db	078H,030H,030H,030H,030H,030H,078H,000H ; I D_49
+		db	01EH,00CH,00CH,00CH,0CCH,0CCH,078H,000H ; J D_4A
+		db	0E6H,066H,06CH,078H,06CH,066H,0E6H,000H ; K D_4B
+
+		db	0F0H,060H,060H,060H,062H,066H,0FEH,000H ; L D_4C
+		db	0C6H,0EEH,0FEH,0FEH,0D6H,0C6H,0C6H,000H ; M D_4C
+		db	0C6H,0E6H,0F6H,0DEH,0CEH,0C6H,0C6H,000H ; N D_4E
+		db	038H,06CH,0C6H,0C6H,0C6H,06CH,038H,000H ; O D_4F
+
+		db	0FCH,066H,066H,07CH,060H,060H,0F0H,000H ; P D_50
+		db	078H,0CCH,0CCH,0CCH,0DCH,078H,01CH,000H ; Q D_51
+		db	0FCH,066H,066H,07CH,06CH,066H,0E6H,000H ; R D_52
+		db	078H,0CCH,0E0H,070H,01CH,0CCH,078H,000H ; S D_53
+
+		db	0FCH,0B4H,030H,030H,030H,030H,078H,000H ; T D_54
+		db	0CCH,0CCH,0CCH,0CCH,0CCH,0CCH,0FCH,000H ; U D_55
+		db	0CCH,0CCH,0CCH,0CCH,0CCH,078H,030H,000H ; V D_56
+		db	0C6H,0C6H,0C6H,0D6H,0FEH,0EEH,0C6H,000H ; W D_57
+
+		db	0C6H,0C6H,06CH,038H,038H,06CH,0C6H,000H ; X D_58
+		db	0CCH,0CCH,0CCH,078H,030H,030H,078H,000H ; Y D_59
+		db	0FEH,0C6H,08CH,018H,032H,066H,0FEH,000H ; Z D_5A
+		db	078H,060H,060H,060H,060H,060H,078H,000H ; [ D_5B
+
+		db	0C0H,060H,030H,018H,00CH,006H,002H,000H ; BACKSLASH D_5C
+		db	078H,018H,018H,018H,018H,018H,078H,000H ; ] D_5D
+		db	010H,038H,06CH,0C6H,000H,000H,000H,000H ; CIRCUMFLEX D_5E
+		db	000H,000H,000H,000H,000H,000H,000H,0FFH ; _ D_5F
+
+		db	030H,030H,018H,000H,000H,000H,000H,000H ;   D_60
+		db	000H,000H,078H,00CH,07CH,0CCH,076H,000H ; LOWER CASE A D_61
+		db	0E0H,060H,060H,07CH,066H,066H,0DCH,000H ; L.C. B D_62
+		db	000H,000H,078H,0CCH,0C0H,0CCH,078H,000H ; L.C. C D_63
+
+		db	01CH,00CH,00CH,07CH,0CCH,0CCH,076H,000H ; L.C. D D_64
+		db	000H,000H,078H,0CCH,0FCH,0C0H,078H,000H ; L.C. E D_65
+		db	038H,06CH,060H,0F0H,060H,060H,0F0H,000H ; L.C. F D_66
+		db	000H,000H,076H,0CCH,0CCH,07CH,00CH,0F8H ; L.C. G D_67
+
+		db	0E0H,060H,06CH,076H,066H,066H,0E6H,000H ; L.C. H D_68
+		db	030H,000H,070H,030H,030H,030H,078H,000H ; L.C. I D_69
+		db	00CH,000H,00CH,00CH,00CH,0CCH,0CCH,078H ; L.C. J D_6A
+		db	0E0H,060H,066H,06CH,078H,06CH,0E6H,000H ; L.C. K D_6B
+
+		db	070H,030H,030H,030H,030H,030H,078H,000H ; L.C. L D_6C
+		db	000H,000H,0CCH,0FEH,0FEH,0D6H,0C6H,000H ; L.C. M D_6D
+		db	000H,000H,0F8H,0CCH,0CCH,0CCH,0CCH,000H ; L.C. N D_6E
+		db	000H,000H,078H,0CCH,0CCH,0CCH,078H,000H ; L.C. O D_6F
+
+		db	000H,000H,0DCH,066H,066H,07CH,060H,0F0H ; L.C. P D_70
+		db	000H,000H,076H,0CCH,0CCH,07CH,00CH,01EH ; L.C. Q D_71
+		db	000H,000H,0DCH,076H,066H,060H,0F0H,000H ; L.C. R D_72
+		db	000H,000H,07CH,0C0H,078H,00CH,0F8H,000H ; L.C. S D_73
+
+		db	010H,030H,07CH,030H,030H,034H,018H,000H ; L.C. T D_74
+		db	000H,000H,0CCH,0CCH,0CCH,0CCH,076H,000H ; L.C. U D_75
+		db	000H,000H,0CCH,0CCH,0CCH,078H,030H,000H ; L.C. V D_76
+		db	000H,000H,0C6H,0D6H,0FEH,0FEH,06CH,000H ; L.C. W D_77
+
+		db	000H,000H,0C6H,06CH,038H,06CH,0C6H,000H ; L.C. X D_78
+		db	000H,000H,0CCH,0CCH,0CCH,07CH,00CH,0F8H ; L.C. Y D_79
+		db	000H,000H,0FCH,098H,030H,064H,0FCH,000H ; L.C. Z D_7A
+		db	01CH,030H,030H,0E0H,030H,030H,01CH,000H ; { D_7B
+
+		db	018H,018H,018H,000H,018H,018H,018H,000H ; | D_7C
+		db	0E0H,030H,030H,01CH,030H,030H,0E0H,000H ; } D_7D
+		db	076H,0DCH,000H,000H,000H,000H,000H,000H ; TILDE D_7E
+		db	000H,010H,038H,06CH,0C6H,0C6H,0FEH,000H ; DELTA D_7F
+;
+;a.1b6d		db	147 dup (0)		; should end @1bff
 
 IF	ROMSEARCH
 ;***** Expansion ROM code *****
@@ -4528,7 +4548,8 @@ NXTROM: ADD     DX,80h                          ; Segment for next ROM
 
 FND_01: CMP     DX,0F600h                       ; End of ROM space
         JL      FNDROM                          ;  ...no, continue
-	ret
+	POP	DS				;  ...yes, clean up stack and return
+	RET
 
 CHKSUM: MOV     CX,2000h                        ; Bytes in 2764 eprom
 CHK_01: MOV     AL,0                            ;  ...zero checksum
@@ -4539,11 +4560,15 @@ ADDBYT: ADD     AL,[BX]                         ; Add byte to checksum
 	RET                                     ;  ...and return
 ENDIF
 
+ROMEND	label BYTE
+; This should end at 1BFF since the CPU initialization starts at 1C00h
 ; In Monitor v3.3, the SCSI code resides near the end of the ROM
 ; before some RAM test code and the 186 init. It is included as a
 ; library file (i.e., "scsi.lib"), which I assume is a plain text
 ; file.
 ;include "scsimon.asm"
+
+	db ($ - ROMEND) dup(0)
 
 ;a.1c00
 	org	01c00h
