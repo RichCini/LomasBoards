@@ -64,7 +64,7 @@ inittbl:
 	dw	TM1CR+TMRCW, 0C003h
 	dw	TM2CR+TMRCA, 4E20h
    	dw	TM2CR+TMRCW, 0C001h
-	dw	00h, 00h
+	db	0,0
 
 ; Initialization table 2. DMA registers for DMA 1 and 2
 inittbl2:
