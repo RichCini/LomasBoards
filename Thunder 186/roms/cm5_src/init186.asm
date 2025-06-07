@@ -48,22 +48,22 @@ inittbl:
 ;	db	5Eh,0FFh, 03h,0C0h
 ;	db	62h,0FFh, 20h, 4Eh
 ;   	db	66h,0FFh, 01h,0C0h
-    	dw	PCRBASE+UMCR, 0FE38h		; Upper memory: 8k block @ FE000h
+    	dw	CSCR+UMCR, 0FE38h		; Upper memory: 8k block @ FE000h
 						; to allow for a larger ROM...
 						; 16k @ FC000h: 0FC38h
 						; 32k @ F8000h: 0F838h 
-	dw	PCRBASE+LMCR, 3FF8h		; Lower memory: 256k block @ 0-3FFFFh
-	dw	PCRBASE+PACS, 003Ah		; 2 wait states @ 0
-    	dw	PCRBASE+MMCS, 4038h		; Middle block start @ 40000h, 0WS with RDY
-	dw	PCRBASE+MPCS, 0A038h		; 256k total block, 64k selects, 0WS with RDY
-	dw	PCRBASE+TM0CR+TMRCA, 0006h
-	dw	PCRBASE+TM0CR+TMRCB, 0007h
-	dw	PCRBASE+TM0CR+TMRCW, 0C003h
-	dw	PCRBASE+TM1CR+TMRCA, 0006h
-    	dw	PCRBASE+TM1CR+TMRCB, 0007h
-	dw	PCRBASE+TM1CR+TMRCW, 0C003h
-	dw	PCRBASE+TM2CR+TMRCA, 4E20h
-   	dw	PCRBASE+TM2CR+TMRCW, 0C001h
+	dw	CSCR+LMCR, 3FF8h		; Lower memory: 256k block @ 0-3FFFFh
+	dw	CSCR+PACS, 003Ah		; 2 wait states @ 0
+    	dw	CSCR+MMCS, 4038h		; Middle block start @ 40000h, 0WS with RDY
+	dw	CSCR+MPCS, 0A038h		; 256k total block, 64k selects, 0WS with RDY
+	dw	TM0CR+TMRCA, 0006h
+	dw	TM0CR+TMRCB, 0007h
+	dw	TM0CR+TMRCW, 0C003h
+	dw	TM1CR+TMRCA, 0006h
+    	dw	TM1CR+TMRCB, 0007h
+	dw	TM1CR+TMRCW, 0C003h
+	dw	TM2CR+TMRCA, 4E20h
+   	dw	TM2CR+TMRCW, 0C001h
 	dw	00h, 00h
 
 ; Initialization table 2. DMA registers for DMA 1 and 2

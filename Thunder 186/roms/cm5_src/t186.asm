@@ -64,7 +64,7 @@ TMRCB	equ	4	; count register B
 TMRCW	equ	6	; mode/control word
 ; memory control
 CSCR	equ	PCRBASE+0a0h
-UMCR	equ	CSCR
+UMCR	equ	0
 LMCR	equ	2
 PACS	equ	4
 MMCS	equ	6
