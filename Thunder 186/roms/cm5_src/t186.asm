@@ -31,7 +31,6 @@ FDDATA		EQU	FDCBASE+2	;DATA REGISTER
 FDDMA		EQU	FDCBASE+4	;DMA ADDRESS (WHEN WRITE)
 DFINTS		EQU	FDCBASE+4	;STATUS REGISTER (WHEN READ)
 
-
 ; 80186 Peripheral Control Registers
 ; At reset, this block starts at 0FF00h in I/O space
 PCRBASE	equ	0ff00h

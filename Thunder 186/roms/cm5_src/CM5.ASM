@@ -1,5 +1,6 @@
 TITLE LDP THUNDER REV 1.0 10/21/85 Color Magic ROM
 PAGE  59,132
+
 ;option M510	; Assume MASM 5.1 if using MASM 6.11
 
 ;
@@ -14,11 +15,12 @@ PAGE  59,132
 
 ; NOTE: The Ampro LittleBoard 186 can boot from the SCSI channel
 ;	so this might be an option... 
+; SCSI IRQ 3, port 310h, D8000h
 ;
 ; There is a system equates file referenced from the monitor and
 ; several hardware-specific files for initializing the 80186 and
 ; as the includes for the storage hardware. These have been 
-; partially re-created.
+; re-created.
 ;
 ; general items:
 ;	tmr0 = serial 0 clock
@@ -33,47 +35,40 @@ PAGE  59,132
 ;	INT3 = bus VI6/VI7 and RX1/RX2	}
 ;	NMI = parity fail (unused with SRAM) and bus NMI
 ;
-; There are several references to ports D0-D6 which are 
-; not documented. This could be the 8255 (config switches
-; and printer port). Since the CM5 ROM is for the Color
-; Magic, I doubt the baud rate switches would be important.
+;               masm cm5;              ( Assemble source code)
+;               link cm5;              ( Link the object code)
+;               debug cm5.EXE          ( Exe2bin  binary code)
+;               -ncm5.BIN              ( Name of the output binary)
+;;              -rBX                   ( Opens hi order byte count)
+;;              :0                     (  ... must be 0 bytes long)
+;;              -rCX                   ( Opens lo order byte count)
+;;              :2000                  (  ... ROM is  2000 bytes long)
+;;              -wCS:0	               ( Output to CM5.BIN file)
+;;		-q
 ;
-; SCSI IRQ 3, port 310h, D8000h
+; I compiled a small program called chksum.exe using Visual C/C++ 1.52 running on
+; Windows 3.1, based on an example I found on-line. It's a simple two's-compliment
+; checksum. You need to run this on the CM5.BIN file otherwise it will checksum
+; the MZ header as well. You can use a file/hex editor to patch it. If unaltered, 
+; the checksum byte should be:
 ;
-; The last byte has to be patched with DEBUG as follows
+;	NORMAL: 	EDh
+;	ROMSEARCH:	??h
 ;
-;   FFFF 00.xx          ( avoid ER_BIOS on bootstrap ) --------------------
-;									  |
-;									  |
-; where "xx" results in a zero checksum for the whole BIOS rom, for ex 	  |
-;                                                                         |
-;               masm BIOS;              ( Assemble BIOS source code)      |
-;               link BIOS;              ( Link the BIOS object code)      |
-;               debug BIOS.EXE          ( Exe2bin  BIOS binary code)      |
-;               -nBIOS.BIN              ( Name of the output binary)      |
-;               -eCS:1FFF               ( Opens BIOS checksum  byte)      |
-;;  ------->    .DC                     ( Force ROM checksum = zero) <-----
-;;              -rBX                    ( Opens hi order byte count)
-;;              :0                      (  ... must be 0 bytes long)
-;;              -rCX                    ( Opens lo order byte count)
-;;              :2000                   (  ... BIOS 2000 bytes long)
-;;              -wCS:0	                ( Output to BIOS.BIN   file)
-;;              -q
-
-
+; It seems that the code does test the checksum byte, but proceeds even if the
+; checksum is bad, unlike the PC which will halt on a bad checksum.
+;
 ;===============================================================================
-;  Defines
+
 FALSE		equ	0
 TRUE		equ	0ffh
-DEBUGF		equ	TRUE		; allows marco expansion
-ROMSEARCH	equ	FALSE		; set true to include expansion ROM search
+LF		equ	0Ah
+CR		equ	0Dh
 
 ; System compilation options
-WD100X		equ	FALSE
-CIA_HDO		equ	FALSE		;Control-it-all HD options installed
-CIA		equ	CIA_HDO
-SCSI		equ	FALSE
-HDO		equ	FALSE		;hard disk option; indicate either CIA or SCSI
+DEBUGF		equ	TRUE		; allows marco expansion
+ROMSEARCH	equ	FALSE		; set true to include expansion ROM search
+SCSI		equ	FALSE		; SCSI configuration enabled
 
 IF	SCSI
 	scsi_options	equ	00100000b	;indicate that SCSI is present
@@ -81,6 +76,21 @@ ELSE
 	scsi_options	equ	00000000b	;indicate no SCSI is present
 ENDIF
 
+entry   macro   x
+        pad     =BANNER - $ + x	; - 0E000h
+        if pad LT 0
+        .err
+        %out    'No room for ENTRY point'
+        endif
+        if pad GT 0
+        db      pad DUP(0)
+        endif
+endm
+
+jmpf    macro   x,y
+        db      0EAh;
+        dw      y,x
+endm
 
 ;===============================================================================
 ;  Constants
@@ -118,8 +128,6 @@ data_50e	equ	3FEh			;*(1040:03FE=3)	COM1 block? Count?
 ; Outside of ROM address; likely just 8K address increments
 data_121e	equ	2000h			;*(A.2000=0)
 data_122e	equ	2001h			;*(A.2001=0)
-; Also odd location.
-;data_123e	equ	49h			; (C000:0049=0) ds:49 is CRT mode
 
 ; The Lomas BIOS doesn't produce error codes, but these might be useful.
 ER_BIOS equ     01h             ; Bad ROM bios checksum, patch last byte
@@ -128,8 +136,6 @@ ER_CRT  equ     04h             ; Bad RAM in video card, replace
 ER_MEM  equ     10h             ; Bad RAM in vector area, replace
 ER_ROM  equ     20h             ; Bad ROM in expansion area, bad checksum
 
-LF      equ     0Ah
-CR      equ     0Dh
 
 ;===============================================================================
 ;  Compiler directives
@@ -137,7 +143,7 @@ CR      equ     0Dh
 ifndef DEBUGF
 .SALL                                           ; Suppress Macro Expansions
 endif
-.LFCOND                                         ; List  False  Conditionals
+.LFCOND                                         ; List False Conditionals
 .186
 ASSUME  DS:data, SS:code, CS:code, ES:code
 
@@ -227,11 +233,12 @@ HD		db	4 dup (0)  	; 40:74 ; scratch pad area
 lptto		db      4 dup(?)        ; 40:78 ; Ticks for LPT 1-4 timeouts
 comto 		db      4 dup(?)        ; 40:7C ; Ticks for COM 1-4 timeouts
 ;---------------[Keyboard buf start/nd]---------;
-; 	dw      ?               ; 40:80         ; Contains 1Eh, buffer start
-;	dw      ?               ; 40:82         ; Contains 3Eh, buffer end
+		dw      ?               ; 40:80 ; Contains 1Eh, buffer start
+		dw      ?               ; 40:82 ; Contains 3Eh, buffer end
 ;
 ; SCSI -- might not be needed if using card with option ROM because work space
-; would be allocated from there. This table is 25 bytes (19h) long.
+; would be allocated from there. This table is 25 bytes (19h) long and based
+; on some code I found in BYTE or TCJ.
 IF	SCSI
 	COMMAND_TABLE	dw	?		;command offset pointer
 	CMND_PTR	dw	?		;segment of commands
@@ -280,7 +287,7 @@ dosdir  ends
 ;===============================================================================
 ;  I O . S Y S   D A T A   S E G M E N T  (IO.SYS initial load segment)
 ;===============================================================================
-;dosseg  SEGMENT at 70h                          ; "Kernel" of PC-DOS op sys
+;dosseg  SEGMENT at 70H 
 
 ;IO.SYS driver/bootstrap code loaded by the boot block to       CONTIGUOUS<---
 ;	70:0 Usually loads the first 3 sectors of IO.SYS.		     |
@@ -297,38 +304,20 @@ dosdir  ends
 ;The following boot block is loaded with 512 bytes on the first sector of     |
 ;the bootable device by code resident in the ROM-resident bios.  Control is   |
 ;then transferred to the first word 0000:7C00 of the disk-resident bootstrap  |
-;        ORG     07C00h                          ;  ..offset for boot block    |
-;boot    db      200h dup(?)                     ;  ..start disk resident boot--
-;iplseg  ends
+;	ORG     07C00h                          ;  ..offset for boot block    |
+;boot	db      200h dup(?)                     ;  ..start disk resident boot--
+;iplseg 	ends
 
 
 ;===============================================================================
 ;  C O D E   S E G M E N T  (BIOS code segment)
 ;===============================================================================
-code    SEGMENT at 0F000H
-;    ASSUME CS:code, DS:data, ES:NOTHING, SS:dosdir
-
-entry   macro   x
-        pad     =BANNER - $ + x	; - 0E000h
-        if pad LT 0
-        .err
-        %out    'No room for ENTRY point'
-        endif
-        if pad GT 0
-        db      pad DUP(0)
-        endif
-endm
-
-jmpf    macro   x,y
-        db      0EAh;
-        dw      y,x
-endm
-
+code    SEGMENT
 
 ; this code sits at F:E000
 	org	0		; zero-start ROM
-;	org	0E000h		; should this be the real org?
 
+; For the ENTRY macro to work, banner must be the first label in the segment
 banner: 	db	"LDP THUNDER REV 1.0 10/21/85"
 	IF	SCSI
 		db	"-S"
@@ -417,8 +406,8 @@ loc_6:						;  xref A.0090
  		call	RamTest			; (01BF) ram sizing and vactor 12
  		call	InitKeyboard		; (0AD4) vectors 16, 0D, 09 keyboard
 		call	InitFloppy		; (05F6) vectos 13, 0B, 1E
- 		mov	ah,0
- 		int	13h			; Disk  dl=drive ?  ah=func 00h reset disk, al=return status
+ 		mov	ah,0			; reset floppy disk
+ 		int	13h			; call diskette services
  		call	InitSerialPorts		; (02BC) vector 14 serial 0
  		call	InitPrinter		; (0224) vector 17 printer
 ;*****
@@ -441,7 +430,7 @@ msg1:		db	'ROM checksum failure', 0Ah, 0Dh, 0
 
 ;===============================================================================
 ;a.00e0
-; INT 06 - Invalid opcode handler. Just prints a message and increment to the 
+; INT 06 - Invalid opcode handler. Just prints a message and increments to the 
 ; next instruction.
 INT06HANDLER:
  		push	bp
@@ -470,7 +459,7 @@ msg2:		db	'Bad opcode encountered', 0Ah, 0Dh,0
 
 ;===============================================================================
 ;a.0113
-; INT 00 - Invalid Interrupt
+; INT 00 - Invalid interrupt handler. Just prints a message.
 INT00HANDLER:
  		push	ax
  		push	bx
@@ -695,10 +684,10 @@ loc_16:						;  xref A.0251
  		push	ax
  		mov	bl,32h			; '2'
  		xor	cx,cx
- 		out	0D0h,al			; port 0D0h printer_port
+ 		out	printer_port,al			; port 0D0h printer_port
 
 locloop_17:					;  xref A.026E, 0272
- 		in	al,0D2h			; port 0D2h PPI_B
+ 		in	al,PPI_B			; port 0D2h PPI_B
  		test	al,20h			; ' '
  		jz	loc_18			; Jump if zero
  		loop	locloop_17		; Loop if cx > 0
@@ -710,15 +699,15 @@ locloop_17:					;  xref A.026E, 0272
 ;a.0279		
 loc_18:						;  xref A.026C
  		mov	al,1
- 		out	0D6h,al			; port 0D6h PPI_CR
+ 		out	PPI_CR,al			; port 0D6h PPI_CR
  		push	ax
  		pop	ax
  		mov	al,0
- 		out	0D6h,al			; port 0D6h PPI_CR
+ 		out	PPI_CR,al			; port 0D6h PPI_CR
  		push	ax
  		pop	ax
  		mov	al,1
- 		out	0D6h,al			; port 0D6h PPI_CR
+ 		out	PPI_CR,al			; port 0D6h PPI_CR
  		pop	ax
  		jmp	short loc_20		; (02AB)
 
@@ -727,29 +716,29 @@ loc_18:						;  xref A.026C
 loc_19:						;  xref A.0255
  		push	ax
  		mov	al,1
- 		out	0D6h,al			; port 0D6h PPI_CR
+ 		out	PPI_CR,al			; port 0D6h PPI_CR
  		push	ax
  		pop	ax
  		mov	al,3
- 		out	0D6h,al			; port 0D6h PPI_CR
+ 		out	PPI_CR,al			; port 0D6h PPI_CR
  		push	ax
  		pop	ax
  		mov	al,6
- 		out	0D6h,al			; port 0D6h PPI_CR
+ 		out	PPI_CR,al			; port 0D6h PPI_CR
  		push	ax
  		pop	ax
  		mov	al,4
- 		out	0D6h,al			; port 0D6h PPI_CR
+ 		out	PPI_CR,al			; port 0D6h PPI_CR
  		call	sub_17			; (08C3)
  		mov	al,5
- 		out	0D6h,al			; port 0D6h PPI_CR
+ 		out	PPI_CR,al			; port 0D6h PPI_CR
  		pop	ax
 
 
 ;a.02ab		
 loc_20:						;  xref A.0259, 028A
  		push	ax
- 		in	al,0D2h			; PPI_B
+ 		in	al,PPI_B			; PPI_B
  		mov	bl,10h
  		test	al,20h			; ' '
  		jz	loc_21			; Jump if zero
@@ -877,10 +866,10 @@ locloop_27:					;  xref A.0345
  		ja	loc_28			; Jump if above
 
 ; set timer register for right UART
- 		mov	dx,0FF5Ah		;PCRBASE+T1CR+TMRCA
+ 		mov	dx,TM1CR+TMRCA		;0FF5Ah		;T1CR+TMRCA
  		jmp	short loc_29		; (0368)
 loc_28:						;  xref A.035E
- 		mov	dx,0FF52h		;PCRBASE+T0CR+TMRCA
+ 		mov	dx,TM0CR+TMRCA		;0FF52h		;T0CR+TMRCA
 loc_29:						;  xref A.0363
  		mov	ah,0
  		shl	ax,1			; Shift w/zeros fill
@@ -888,13 +877,13 @@ loc_29:						;  xref A.0363
  		mov	bx,offset data_81	; (A.038B=38h)
  		add	bx,ax
  		mov	ax,cs:[bx]
- 		out	dx,ax			; port 0FF52h PCRBASE+T0CR+TMRCA
+ 		out	dx,ax			; port 0FF52h T0CR+TMRCA
  		add	dx,2			; go to count register B
  		add	bx,2
  		mov	ax,cs:[bx]
  		call	sub_17			; (08C3)
  		out	dx,ax			; port 0FF54h
- 		pop	dx			; PCRBASE+T0CR+TMRCB
+ 		pop	dx			; T0CR+TMRCB
  		sub	dx,2			; back to CRA?
  		jmp	loc_47			; (0454)
 
@@ -939,7 +928,7 @@ loc_32:						;  xref A.03B9
 locloop_33:					;  xref A.03D1, 03D5
  		in	al,dx			; port 2, DMA-1 bas&add ch 1
  		test	al,1
- 		jnz	loc_34	o
+ 		jnz	loc_34
  		loop	locloop_33		; Loop if cx > 0
 
  		dec	bl
@@ -1119,7 +1108,7 @@ InitEquipList	proc	near
 ;	BIT 1 NOT USED
 ;	BIT 0 = IPL FROM DISKETTE -- THIS BIT INDICATES THAT THERE ARE DISKETTE
 ;		DRIVES ON THE SYSTEM
- 		mov	ax,446Dh		; 01000100 / 01101101
+ 		mov	ax,0100010001101101b	;446Dh		; 01000100 / 01101101
  		mov	ds:equip_bits,ax	; (0040:0010=4467h)
  		pop	ds
  		retn
@@ -1191,7 +1180,7 @@ INT0CHANDLER:
  		test	ax,5004h		; 01100000-00000100
  		push	dx
  		mov	ax,8000h		; 10000000-00000000
- 		mov	dx,0FF22h		;PCRBASE+ICR+EOIREG
+ 		mov	dx,ICR+EOIREG		;FF22h		;ICR+EOIREG
  		out	dx,ax
  		pop	dx
  		pop	ax
@@ -1317,15 +1306,15 @@ locloop_65:					;  xref A.05BE
 ; should ax,cx be preserved?
 BEEP		proc	near
  		mov	al,0B6h
- 		out	43h,al			; port 43h, 8253 timer control C58253CTL
+ 		out	C58253CTL,al		; port 43h, 8253 timer control C58253CTL
  		mov	ax,533h
- 		out	42h,al			; port 42h, 8253 timer 2 spkr C5TIMER2
+ 		out	C5TIMER2,al		; port 42h, 8253 timer 2 spkr C5TIMER2
  		mov	al,ah
- 		out	42h,al			; port 42h, 8253 timer 2 spkr C5TIMER2
- 		in	al,61h			; port 61h, 8255 port B, read C58255PB
+ 		out	C5TIMER2,al		; port 42h, 8253 timer 2 spkr C5TIMER2
+ 		in	al,C58255PB		; port 61h, 8255 port B, read C58255PB
  		mov	ah,al
  		or	al,3
- 		out	61h,al			; port 61h, 8255 B - spkr, etc C58255PB
+ 		out	C58255PB,al		; port 61h, 8255 B - spkr, etc C58255PB
  		sub	cx,cx
 
 BEEP_1:						;  xref A.05DA, 05DE
@@ -1333,7 +1322,7 @@ BEEP_1:						;  xref A.05DA, 05DE
  		dec	bl
  		jnz	BEEP_1			; Jump if not zero
  		mov	al,ah
- 		out	61h,al			; port 61h, 8255 B - spkr, etc C58255PB
+ 		out	C58255PB,al		; port 61h, 8255 B - spkr, etc C58255PB
  		retn
 BEEP		endp
 
@@ -1523,7 +1512,7 @@ cmdDiskFmt:					;  xref A.0686
  		xor	ah,ah			; Zero register
  		shl	ax,1			; Shift w/zeros fill
  		shl	ax,1			; Shift w/zeros fill
- 		mov	dx,0FFD8h		;PCRBASE+DMA1+DMATC
+ 		mov	dx,DMA1+DMATC		;0FFD8h		;DMA1+DMATC
  		out	dx,ax			; port 0FFD8h ??I/O Non-standard
  		pop	dx
  		pop	bx
@@ -1537,7 +1526,7 @@ loc_79:						;  xref A.075C
  		mov	bx,0Fh
  		call	GetpDPB			; (0834)
  		mov	ax,word ptr ds:[gen_io_ptr]	; (A.0067=8C00h)
- 		mov	dx,0FFDAh		;PCRBASE+DMA1+DMACW
+ 		mov	dx,DMA1+DMACW		;0FFDAh		;DMA1+DMACW
  		out	dx,ax			; port 0FFDAh ??I/O Non-standard
  		mov	bx,11h
  		call	GetpDPB			; (0834)
@@ -1596,7 +1585,7 @@ loc_84:						;  xref A.075A
  		mov	bx,0Bh
  		call	GetpDPB			; (0834)
  		mov	ax,word ptr ds:[gen_io_ptr]	; (A.0067=8C00h)
- 		mov	dx,0FFDAh		;PCRBASE+DMA1+DMACW
+ 		mov	dx,DMA1+DMACW		;0FFDAh		;DMA1+DMACW
  		out	dx,ax			; port 0FFDAh ??I/O Non-standard
  		mov	bx,0Dh
  		call	GetpDPB			; (0834)
@@ -1671,7 +1660,7 @@ INT0BHANDLER:
  		mov	ds,ax
  		or	byte ptr ds:dsk_recal_stat,80h	; (0040:003E=0)
  		mov	ax,8000h
- 		mov	dx,0FF22h		;PCRBASE+ICR+EOIREG
+ 		mov	dx,ICR+EOIREG		;0FF22h		;ICR+EOIREG
  		out	dx,ax			; port 0FF22h ??I/O Non-standard
  		pop	ds
  		pop	dx
@@ -1913,16 +1902,16 @@ sub_18		proc	near
  ;a.0906
 loc_108:					;  xref A.0903
  		test	byte ptr ds:dsk_motor_stat,80h	; (0040:003F=0)
- 		jz	loc_109		; Jump if zero
- 		mov	dx,0FFD0h		;PCRBASE+DMA1+DMASP
+ 		jz	loc_109			; Jump if zero
+ 		mov	dx,DMA1+DMASP		;0FFD0h		;DMA1+DMASP
  		out	dx,ax			; port 0FFD0h ??I/O Non-standard
- 		mov	dx,0FFD2h		;PCRBASE+DMA1+DMASP1
+ 		mov	dx,DMA1+DMASP1		;0FFD2h		;DMA1+DMASP1
  		mov	ax,bx
  		out	dx,ax			; port 0FFD2h ??I/O Non-standard
  		xor	ax,ax			; Zero register
- 		mov	dx,0FFD6h		;PCRBASE+DMA1+DMADP1
+ 		mov	dx,DMA1+DMADP1		;0FFD6h		;DMA1+DMADP1
  		out	dx,ax			; port 0FFD6h ??I/O Non-standard
- 		mov	dx,0FFD4h		;PCRBASE+DMA1+DMADP
+ 		mov	dx,DMA1+DMADP		;0FFD4h		;DMA1+DMADP
  		mov	ax,0A0h
  		out	dx,ax			; port 0FFD4h ??I/O Non-standard
  		mov	si,1786h
@@ -1930,15 +1919,15 @@ loc_108:					;  xref A.0903
 loc_109:					;  xref A.090B
  		test	byte ptr ds:dsk_motor_stat,40h	; (0040:003F=0) '@'
  		jnz	loc_110		; Jump if not zero
- 		mov	dx,0FFD4h		;PCRBASE+DMA1+DMADP
+ 		mov	dx,DMA1+DMADP		;0FFD4h		;DMA1+DMADP
  		out	dx,ax			; port 0FFD4h ??I/O Non-standard
- 		mov	dx,0FFD6h		;PCRBASE+DMA1+DMADP1
+ 		mov	dx,DMA1+DMADP1		;0FFD6h		;DMA1+DMADP1
  		mov	ax,bx
  		out	dx,ax			; port 0FFD6h ??I/O Non-standard
  		xor	ax,ax			; Zero register
- 		mov	dx,0FFD2h		;PCRBASE+DMA1+DMASP1
+ 		mov	dx,DMA1+DMASP1		;0FFD2h		;DMA1+DMASP1
  		out	dx,ax			; port 0FFD2h ??I/O Non-standard
- 		mov	dx,0FFD0h		;PCRBASE+DMA1+DMASP
+ 		mov	dx,DMA1+DMASP		;0FFD0h		;DMA1+DMASP
  		mov	ax,0A0h
  		out	dx,ax			; port 0FFD0h ??I/O Non-standard
  		mov	si,0A346h
@@ -1946,15 +1935,15 @@ loc_109:					;  xref A.090B
 ;a.094c
 loc_110:					;  xref A.092E
  		mov	ax,0E000h
- 		mov	dx,0FFD4h		;PCRBASE+DMA1+DMADP
+ 		mov	dx,DMA1+DMADP		;0FFD4h		;DMA1+DMADP
  		out	dx,ax			; port 0FFD4h ??I/O Non-standard
- 		mov	dx,0FFD6h		;PCRBASE+DMA1+DMADP1
+ 		mov	dx,DMA1+DMADP1		;0FFD6h		;DMA1+DMADP1
  		mov	ax,0Fh
  		out	dx,ax			; port 0FFD6h ??I/O Non-standard
  		xor	ax,ax			; Zero register
- 		mov	dx,0FFD2h		;PCRBASE+DMA1+DMASP1
+ 		mov	dx,DMA1+DMASP1		;0FFD2h		;DMA1+DMASP1
  		out	dx,ax			; port 0FFD2h ??I/O Non-standard
- 		mov	dx,0FFD0h		;PCRBASE+DMA1+DMASP
+ 		mov	dx,DMA1+DMASP		;0FFD0h		;DMA1+DMASP
  		mov	ax,0A0h
  		out	dx,ax			; port 0FFD0h ??I/O Non-standard
  		mov	si,8346h
@@ -1971,7 +1960,7 @@ loc_111:					;  xref A.0927, 094A
  		mov	cl,ah
  		pop	ax
  		shl	ax,cl			; Shift w/zeros fill
- 		mov	dx,0FFD8h		;PCRBASE+DMA1+DMATC
+ 		mov	dx,DMA1+DMATC		;0FFD8h		;DMA1+DMATC
  		out	dx,ax			; port 0FFD8h ??I/O Non-standard
  		clc				; Clear carry flag
  		pop	si
@@ -2019,8 +2008,8 @@ loc_113:					;  xref A.09A2
 sub_19		proc	near
  		push	ax
  		push	dx
- 		mov	al,%00000101		;5 PC2 set LP_INIT=H
- 		out	0D6h,al			; port 0D6h PPI_CR
+ 		mov	al,00000101b		;5 PC2 set LP_INIT=H
+ 		out	PPI_CR,al			; port 0D6h PPI_CR
  		pop	dx
  		pop	ax
  		retn
@@ -2037,8 +2026,8 @@ sub_19		endp
 sub_20		proc	near
  		push	ax
  		push	dx
- 		mov	al,%00000100		;4 PC2 reset LP_INIT=L
- 		out	0D6h,al			; port 0D6h PPI_CR
+ 		mov	al,00000100b		;4 PC2 reset LP_INIT=L
+ 		out	PPI_CR,al			; port 0D6h PPI_CR
  		pop	dx
  		pop	ax
  		retn
@@ -2059,7 +2048,7 @@ sub_21		proc	near
  		push	dx
  		cli				; Disable interrupts
  		mov	ax,0
- 		mov	dx,0FF36h		;PCRBASE+ICR+D1CR
+ 		mov	dx,ICR+D1CR		;0FF36h		;ICR+D1CR
  		out	dx,ax			; port 0FF36h ??I/O Non-standard
  		sti				; Enable interrupts
  		mov	dx,90h
@@ -2078,7 +2067,7 @@ locloop_114:					;  xref A.09DA, 09DE
  		or	byte ptr ds:[dsk_ret_code],80h	; (A.0041=0B9h)
  		and	byte ptr ds:[dsk_recal_stat],7Fh	; (A.003E=0FBh)
  		mov	ax,8
- 		mov	dx,0FF36h		;PCRBASE+ICR+D1CR
+ 		mov	dx,ICR+D1CR		;0FF36h		;PCRBASE+ICR+D1CR
  		out	dx,ax			; port 0FF36h ??I/O Non-standard
  		sti				; Enable interrupts
  		stc				; Set carry flag
@@ -2086,7 +2075,7 @@ locloop_114:					;  xref A.09DA, 09DE
 loc_115:					;  xref A.09D8
  		cli				; Disable interrupts
  		mov	ax,8
- 		mov	dx,0FF36h		;PCRBASE+ICR+D1CR
+ 		mov	dx,ICR+D1CR		;0FF36h		;PCRBASE+ICR+D1CR
  		out	dx,ax			; port 0FF36h ??I/O Non-standard
  		clc				; Clear carry flag
 loc_116:					;  xref A.09F7
@@ -2171,12 +2160,12 @@ sub_22		endp
 ;a.0a4c
 sub_23		proc	near
  		push	ax
- 		mov	al,%00001101		;0Dh PC7 set
- 		out	0D6h,al			; port 0D6h PPI_CR
+ 		mov	al,00001101b		;0Dh PC7 set
+ 		out	PPI_CR,al			; port 0D6h PPI_CR
  		push	ax
  		pop	ax
  		mov	al,0Ch
- 		out	0D6h,al			; port 0D6h PPI_CR
+ 		out	PPI_CR,al			; port 0D6h PPI_CR
  		pop	ax
  		retn
 sub_23		endp
@@ -2347,13 +2336,13 @@ InitKeyboard	proc	near
  		mov	ds:keybd_flags_2,al	; (0040:0018=0)
  		mov	ds:keybd_alt_num,al	; (0040:0019=0)
 
- 		mov	dx,0FF3Ah		;PCRBASE+ICR+INT1CR
+ 		mov	dx,ICR+INT1CR		;0FF3Ah		;ICR+INT1CR
  		mov	ax,1
  		out	dx,ax			; port 0FF3Ah ??I/O Non-standard
  		mov	al,98h
- 		out	63h,al			; port 63h, 8255 mode reg
+ 		out	C58255CMD,al		; port 63h, 8255 mode reg
  		mov	al,0C0h
- 		out	61h,al			; port 61h, 8255 B - spkr, etc
+ 		out	C58255PB,al		; port 61h, 8255 B - spkr, etc
  		call	InitKbdCtrlr		; (0B6E)	reset kbd
  		popf				; Pop flags
  		pop	ds
@@ -2438,12 +2427,12 @@ InitKbdCtrlr		proc	near
 locloop_137:					;  xref A.0B78
  		loop	locloop_137		; Loop if cx > 0
 
- 		in	al,61h			; port 61h, 8255 port B, read
+ 		in	al,C58255PB		; port 61h, 8255 port B, read
  		or	al,0C0h
- 		out	61h,al			; port 61h, 8255 B - spkr, etc
+ 		out	C58255PB,al		; port 61h, 8255 B - spkr, etc
  		and	al,3Fh			; '?'
  		or	al,40h			; '@'
- 		out	61h,al			; port 61h, 8255 B - spkr, etc
+ 		out	C58255PB,al		; port 61h, 8255 B - spkr, etc
  		xor	cx,cx			; Zero register
  		cli				; Disable interrupts
 
@@ -2455,12 +2444,12 @@ locloop_138:					;  xref A.0B8D
  		jcxz	loc_139			; Jump if cx=0
  		in	al,60h			; port 60h, keybd scan or sw1
  		push	ax
- 		in	al,61h			; port 61h, 8255 port B, read
+ 		in	al,C58255PB		; port 61h, 8255 port B, read
  		mov	ah,al
  		or	al,80h
- 		out	61h,al			; port 61h, 8255 B - spkr, etc
+ 		out	C58255PB,al		; port 61h, 8255 B - spkr, etc
  		mov	al,ah
- 		out	61h,al			; port 61h, 8255 B - spkr, etc
+ 		out	C58255PB,al		; port 61h, 8255 B - spkr, etc
  		pop	ax
  		cmp	al,0AAh
  		jne	loc_139			; Jump if not equal
@@ -2468,12 +2457,12 @@ locloop_138:					;  xref A.0B8D
 loc_139:					;  xref A.0B8F, 0BA3
  		mov	si,offset msg5		; (A.0BBA='Keyboard reset f')
  		call	prtzstr			; (05E5)
- 		in	al,61h			; port 61h, 8255 port B, read
+ 		in	al,C58255PB		; port 61h, 8255 port B, read
  		mov	ah,al
  		or	al,80h
- 		out	61h,al			; port 61h, 8255 B - spkr, etc
+ 		out	C58255PB,al		; port 61h, 8255 B - spkr, etc
  		mov	al,ah
- 		out	61h,al			; port 61h, 8255 B - spkr, etc
+ 		out	C58255PB,al		; port 61h, 8255 B - spkr, etc
  		stc				; Set carry flag
  		retn
 InitKbdCtrlr		endp
@@ -2566,8 +2555,8 @@ data_86:	db	1Bh, '1234567890-=', 8, 9, 'qwert'	;  xref A.0F2D
 ; Alt Table Scan
 ;K13
 ;a.0cc1
-;		db	'hiklmnopq'
-		db	104,105,106,107,108
+;		db	'hiklmnopq'		; note that "j" is missing in the table
+		db	104,105,107,108
 		db	109,110,111,112,113
 
 ; Num State Table
@@ -2592,7 +2581,7 @@ INT0DHANDLER:
  		push	ax
  		push	dx
  		mov	ax,8000h		; do EOI
- 		mov	dx,0FF22h		;PCRBASE+ICR+EOIREG
+ 		mov	dx,ICR+EOIREG		;0FF22h		;ICR+EOIREG
  		out	dx,ax
  		pop	dx
  		pop	ax
@@ -2955,11 +2944,11 @@ sub_31		proc	near
  		push	bx
  		push	cx
  		mov	bx,0C0h
- 		in	al,61h			; port 61h, 8255 port B, read
+ 		in	al,C58255PB		; port 61h, 8255 port B, read
  		push	ax
 loc_189:					;  xref A.0FA8
  		and	al,0FCh
- 		out	61h,al			; port 61h, 8255 B - spkr, etc
+ 		out	C58255PB,al		; port 61h, 8255 B - spkr, etc
  						;  al = 0, speaker off
  		mov	cx,48h
 
@@ -2967,7 +2956,7 @@ locloop_190:					;  xref A.0F9C
  		loop	locloop_190		; Loop if cx > 0
 
  		or	al,2
- 		out	61h,al			; port 61h, 8255 B - spkr, etc
+ 		out	C58255PB,al		; port 61h, 8255 B - spkr, etc
  		mov	cx,48h
 
 locloop_191:					;  xref A.0FA5
@@ -2976,7 +2965,7 @@ locloop_191:					;  xref A.0FA5
  		dec	bx
  		jnz	loc_189			; Jump if not zero
  		pop	ax
- 		out	61h,al			; port 61h, 8255 B - spkr, etc
+ 		out	C58255PB,al		; port 61h, 8255 B - spkr, etc
  						;  al = 0, speaker off
  		pop	cx
  		pop	bx
@@ -3929,6 +3918,8 @@ loc_260:					;  xref A.14F5
  		jnz	loc_262			; Jump if not zero
  		stosb				; Store al to es:[di]
  		lodsb				; String [si] to al
+
+; this is in ROM so storing to the checksum byte shouldn't work
 loc_261:					;  xref A.1509
  		mov	byte ptr es:cksumb[di],al	; (A.1FFF=0E6h)
  		add	di,4Fh
@@ -4361,7 +4352,7 @@ GRAFIX:
 
 		db	0FFH,0FFH,0E7H,0C3H,0C3H,0E7H,0FFH,0FFH ; D_08 x
 		db	000H,03CH,066H,042H,042H,066H,03CH,000H ; D_09 x
-		db	0FFH,0C3H,099H,0BDH,0BDH,099H,0C3H,0FFH ; D_0A x
+		db	0FFH,0C3H,099H,0BDH,0B0H,099H,0C3H,0FFH ; D_0A x
 		db	00FH,007H,00FH,07DH,0CCH,0CCH,0CCH,078H ; D_08 x
 
 		db	03CH,066H,066H,066H,03CH,018H,07EH,018H ; D_0C x
@@ -4380,7 +4371,7 @@ GRAFIX:
 		db	018H,03CH,07EH,018H,07EH,03CH,018H,0FFH ; D_17
 
 		db	018H,03CH,07EH,018H,018H,018H,018H,000H ; D_18
-		db	018H,018H,018H,018H,07EH,03CH,018H,000H ; D_19
+		db	018H,018H,018H,018H,073H,03CH,018H,000H ; D_19
 		db	000H,018H,00CH,0FEH,00CH,018H,000H,000H ; D_1A
 		db	000H,030H,060H,0FEH,060H,030H,000H,000H ; D_1B
 
@@ -4456,7 +4447,7 @@ GRAFIX:
 
 		db	0FCH,0B4H,030H,030H,030H,030H,078H,000H ; T D_54
 		db	0CCH,0CCH,0CCH,0CCH,0CCH,0CCH,0FCH,000H ; U D_55
-		db	0CCH,0CCH,0CCH,0CCH,0CCH,078H,030H,000H ; V D_56
+		db	0CCH,0CCH,0CCH,0CCH,0CCH,078H,0C0H,000H ; V D_56
 		db	0C6H,0C6H,0C6H,0D6H,0FEH,0EEH,0C6H,000H ; W D_57
 
 		db	0C6H,0C6H,06CH,038H,038H,06CH,0C6H,000H ; X D_58
@@ -4508,46 +4499,48 @@ GRAFIX:
 		db	0E0H,030H,030H,01CH,030H,030H,0E0H,000H ; } D_7D
 		db	076H,0DCH,000H,000H,000H,000H,000H,000H ; TILDE D_7E
 		db	000H,010H,038H,06CH,0C6H,0C6H,0FEH,000H ; DELTA D_7F
-;
-;a.1b6d		db	147 dup (0)		; should end @1bff
+; This ends at a.1b70
 
 IF	ROMSEARCH
 ;***** Expansion ROM code *****
 ; This is called after the hardware is initialized but before
-; the video is displayed. Borrowed from the Generic XT BIOS.
-EXPROM: MOV     DX,0C800h                       ; ROM segment start
-	PUSH    DS
+; the video is displayed. Borrowed from the Generic XT BIOS. The expansion
+; ROM spec denotes the area C8000-EE000 starting on 2k boundries. Expansion
+; devices are usually 8K (2764) EPROMS.
+;
+EXPROM: MOV	DX,0C800h                       ; ROM segment start
+	PUSH 	DS
 
-FNDROM: MOV     DS,DX                           ; Load ROM segment
-        XOR     BX,BX                           ;  ...ID offset
-        MOV     AX,[BX]                         ; Read the ROM id
-        CMP     AX,0AA55h
-        JNZ     NXTROM                          ;  ...not valid ROM
-        MOV     AX,40h
-        MOV     ES,AX
-        MOV     AH,0
-        MOV     AL,[BX+2]                       ; Get ROM size (bytes * 512)
-        MOV     CL,5
-        SHL     AX,CL                           ; Now ROM size in segments
-        ADD     DX,AX                           ;  ...add base segment
-        MOV     CL,4
-        SHL     AX,CL                           ; ROM address in bytes
-        MOV     CX,AX                           ;  ...checksum requires CX
-        CALL    CHK_01                          ; Find ROM checksum
-        JNZ     BADROM                          ;  ...bad ROM
-        PUSH    DX
-        MOV     Word ptr ES:[gen_io_ptr],3	; 67h Offset  for ROM being setup
-        MOV     ES:[gen_io_ptr+2],DS		; 69h Segment for ROM being setup
-        CALL    Dword ptr ES:[gen_io_ptr]	;  ...call ROM initialization
-        POP     DX
-        JMP     short FND_01			; see if there are any more ROMs
+FNDROM: MOV	DS,DX                           ; Load ROM segment
+	XOR	BX,BX                           ;  ...ID offset
+	MOV	AX,[BX]                         ; Read the ROM id
+	CMP	AX,0AA55h
+	JNZ	NXTROM                          ;  ...not valid ROM
+	MOV	AX,40h
+	MOV	ES,AX
+	MOV	AH,0
+	MOV	AL,[BX+2]                       ; Get ROM size (bytes * 512)
+	MOV	CL,5
+	SHL	AX,CL                           ; Now ROM size in segments
+	ADD	DX,AX                           ;  ...add base segment
+	MOV	CL,4
+	SHL	AX,CL                           ; ROM address in bytes
+	MOV	CX,AX                           ;  ...checksum requires CX
+	CALL	CHK_01                          ; Find ROM checksum
+	JNZ	BADROM                          ;  ...bad ROM
+	PUSH	DX
+	MOV	word ptr ES:[gen_io_ptr],3	; 67h Offset  for ROM being setup
+	MOV     ES:[gen_io_ptr+2],DS		; 69h Segment for ROM being setup
+	CALL	dword ptr ES:[gen_io_ptr]	;  ...call ROM initialization
+	POP	DX
+	JMP	short FND_01			; see if there are any more ROMs
 
 BADROM: OR      Byte ptr ES:[scratch1],ER_ROM          ; ROM present, bad checksum 15h
 
 NXTROM: ADD     DX,80h                          ; Segment for next ROM
 
 FND_01: CMP     DX,0F600h                       ; End of ROM space
-        JL      FNDROM                          ;  ...no, continue
+	JL      FNDROM                          ;  ...no, continue
 	POP	DS				;  ...yes, clean up stack and return
 	RET
 
@@ -4560,20 +4553,17 @@ ADDBYT: ADD     AL,[BX]                         ; Add byte to checksum
 	RET                                     ;  ...and return
 ENDIF
 
-ROMEND	label BYTE
-; This should end at 1BFF since the CPU initialization starts at 1C00h
+; this ends at about 1BCF
+;
 ; In Monitor v3.3, the SCSI code resides near the end of the ROM
 ; before some RAM test code and the 186 init. It is included as a
 ; library file (i.e., "scsi.lib"), which I assume is a plain text
 ; file.
 ;include "scsimon.asm"
-
-	db ($ - ROMEND) dup(0)
-
 ;a.1c00
-	org	01c00h
+;	org	01c00h
+	ENTRY	01C00h
 include "INIT186.ASM"
-;	dup 	(POWER - $) dup (0)
 ; should end at 1fefh
 
 ;******************************************************************************
@@ -4582,12 +4572,12 @@ include "INIT186.ASM"
 	ENTRY 	01FF0h			; this should put fill bytes before
 	PUBLIC	POWER
 POWER:	jmpf	0FE00h, COLDST
-;	db	09 dup (0)
-;******************************************************************************
-	ENTRY 	01FFEh
+	db	9 dup (0)
 ; NOTE: the original ROM did not have an equipment byte.
 	db	0FBh			; model byte for later XT
+; Checksum byte needs to be patched after the binary image is created.
 cksumb:
-	db	0E6h			; checksum byte xref A.14EB, 1504
-code    ENDS
-END POWER
+	db	0			; checksum byte xref A.14EB, 1504
+
+code	ends
+end 	POWER
