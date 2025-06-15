@@ -14,11 +14,11 @@ CODE    SEGMENT BYTE PUBLIC 'IOSYS'
         IF      INSTALL
 
 HDSKDEV:        ;Header for hard disk
-        DD      -1
-        DW      2000H
-        DW      STRATEGY
-        DW      HDSK$IN
-        DB      ?
+        DD      -1              ; link to next device
+        DW      2000H           ; block device
+        DW      STRATEGY        ; strategy 
+        DW      HDSK$IN         ; interrupt
+        DB      1               ; was '?' but 1 block device seems right
 
         ELSE
 
