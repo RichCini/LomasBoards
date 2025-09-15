@@ -112,14 +112,16 @@ original board uses a 10v tantalum.
 
 ## LomasSCSI 
 
+<img src="https://raw.githubusercontent.com/RichCini/LomasBoards/master/SCSI/LomasSCSI.jpg?sanitize=true&raw=true"/>
+
 ### Status --
 The board is about 85% redrawn in KiCAD. Since no printed schematics are known to exist, this is
 being done by the "continuity tester" method -- ohming out every connection on the board. Slow
-going at best.
+going at best. This method did allow me to determine the PAL pin usage, though.
 
-The board contains one PAL, a 20L10, used as an address decoder. The PAL has been reversed and the
+The board contains one PAL, U16 (a 20L10), used as an address decoder. The PAL has been reversed and the
 equations tested against the original by burning another PAL, but without a working test setup for
-the original board, confirming that the equations are 100% correct will be difficult. From probing,
+the original board, confirming that the equations are 100% correct is difficult. From probing,
 I do believe that they are correct, though. So, more to come on this.
 
 
