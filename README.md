@@ -110,6 +110,19 @@ There is one errata. Capacitor C9 in the reset circuit should be 22uF/16v polari
 is misdrawn on the original schematic. A regular tantalum fits fine in this space. The
 original board uses a 10v tantalum.
 
+## LomasSCSI 
+
+### Status --
+The board is about 85% redrawn in KiCAD. Since no printed schematics are known to exist, this is
+being done by the "continuity tester" method -- ohming out every connection on the board. Slow
+going at best.
+
+The board contains one PAL, a 20L10, used as an address decoder. The PAL has been reversed and the
+equations tested against the original by burning another PAL, but without a working test setup for
+the original board, confirming that the equations are 100% correct will be difficult. From probing,
+I do believe that they are correct, though. So, more to come on this.
+
+
 
 
 
