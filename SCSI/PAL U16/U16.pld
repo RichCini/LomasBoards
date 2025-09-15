@@ -1,0 +1,59 @@
+//
+// LDP SCSI U16 equations from reverse engineering, assuming no I/Os (only I or O) and no registers
+//	Richard Cini  8/10/25
+//	Input file for palwiz.exe
+//
+// vectors chip type: 9
+//
+
+chip 22V10; 	// Programmed Lattice GAL22V10D on TL-866 Programmer
+
+
+pin 1 BDSELECT;		// Board Select
+pin 2 NC1;		// 
+pin 3 A4;		// 
+pin 4 A3;		// 
+pin 5 sOUT;		// not used
+pin 6 PC7;		// not used
+pin 7 A1;		// 
+pin 8 pDBIN;		//
+pin 9 sOUT2;		// not used
+pin 10 A2;		// 
+pin 11 A0;		// 
+pin 13 NC2;		// 
+
+pin 14 BYTESIN;		// DDR in/out
+pin 15 CS_RTC;		// RTC addressing done through 8255 port C
+pin 16 CS_PIO;		// 
+pin 17 CS_SCCS2;	//  
+pin 18 CS_SCCS1;      	// 
+pin 19 CS_TMR;      	//
+pin 20 CS_SCSI;    	//
+pin 21 NC3;	    	// 
+pin 22 NC4;	    	//  
+pin 23 DACK;    	//  
+
+!BYTESIN  = !A2 & pDBIN & !A1 & !BDSELECT | pDBIN & !A4 & !BDSELECT | pDBIN & !A3 & !BDSELECT ;
+//!BYTESIN  =  !BDSELECT & pDBIN | !BDSELECT & pDBIN & A4 & A3 & !A2 & !A1 & !A0 ;
+!CS_RTC   =  !BDSELECT &            A4 &  A3 & !A2 & !A1 & A0;			// 4Ah 8255 R/W 0100-1010
+!CS_PIO   =  !BDSELECT &           !A4 &  A3 & !A2;	 			// 48h-4Bh 8255 R/W 0100-1000
+!CS_SCCS1 =  !BDSELECT &            A4 & !A3 & !A2;				// 50h-53h Serial 1 R/W 0101-0000
+!CS_SCCS2 =  !BDSELECT &            A4 & !A3 &  A2;				// 54h-57h Serial 2 R/W 0101-0100
+!CS_TMR   =  !BDSELECT &           !A4 &  A3 &  A2;				// 5Ch-5Fh 8253 R/W 0101-1100
+!CS_SCSI  =  !BDSELECT &           !A4 & !A3;					// 40h-47h SCSI R/W 0100-0000
+NC3 = ;
+NC4 = ;
+!DACK     =  !BDSELECT &            A4 &  A3 & !A2 & !A1 & !A0;			// 58h DACK control 0101-1000
+
+
+BYTESIN.oe=1;
+CS_RTC.oe=1;	
+CS_PIO.oe=1;	
+CS_SCCS2.oe=1;
+CS_SCCS1.oe=1;  
+CS_TMR.oe=1;
+CS_SCSI.oe=1;
+DACK.oe=1;
+
+NC3.oe=0;
+NC4.oe=0;
