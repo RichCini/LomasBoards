@@ -31,9 +31,31 @@ because the interrupt system in the Thunder 186 is all different
 "null" COMM driver and use that for now.
 
 Windows will load and run using the "slow boot" configuration
-(a special debug configuration with all of the drivers separate).
+and the CGA video driver (DRV, GRB, and LGO files) and it does work. 
+
 Windows 1 and 2 used a monolithic file containing all of the drivers
 combined in one file to improve loading performance. The modern analog 
-would be the WIN386 file in Windows 3.1 where all of the VXDs are combined.
+would be the WIN386 file in Windows 3.1 where all of the VXDs are combined. 
+The slow boot configuration is a special debug mode using the debug
+kernel and the individual drivers for COMM, DISPLAY, KEYBOARD, MSDOS, MOUSE, 
+and SOUND. It facilitated debugging and swapping drivers for testing.
+
+There is a screen anomaly where it appears that the screen is shifted right 
+by half a character cell. It's the same with the original Color Magic and the
+one I re-created, so it's not a "board thing" but something in the video
+subsystem and/or BIOS where the blanking signal is delayed slightly too long. 
+I played around with delays in the video circuit but I was never able to get it
+to be perfect, so I just left it. It's not clear whether Lomas envisioned
+being able to run Windows, so they either never tested, or didn't care to
+fix it.
+
+Also, there is no mouse input. Mouse input relies on either standard
+serial ports or an InPort bus mouse, neither of which is straightforward
+to implement on a Lomas system because of the interrupt system. It would
+require a redesign of the interrupt system to use external 8259 PICs 
+instead of the PIC internal to the 80186. On the up side, keyboard
+shortcuts work.
+
+
 
 
