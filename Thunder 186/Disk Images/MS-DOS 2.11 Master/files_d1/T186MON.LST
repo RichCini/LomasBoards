@@ -1,0 +1,2945 @@
+CP/M ASM86 1.1  SOURCE: T186MON.A86   THUNDER 186 Rev 0.1 4/27/84					       PAGE   1
+
+
+			TITLE	'THUNDER 186 Rev 0.1 4/27/84'
+			PAGEWIDTH	120
+			PAGESIZE	88
+
+			;Lomas Data Products Monitor for 80186
+			;
+
+   0000 				DSEG	0
+				ORG	0H
+ 0000			INT0IP		RW	1
+ 0002			INT0CS		RW	1	;DIVIDE ERROR INTERRUPT EXCEPTION
+ 0004			INT_1_OFF	RW	1	;SINGLE STEP OFFSET
+ 0006			INT_1_SEG	RW	1
+ 0008			INT_2_OFF	RW	1	;NON MASKABLE INTERRUPT
+ 000A			INT_2_SEG	RW	1	;NORMALLY MEMORY ERROR
+ 000C			INT_3_OFF	RW	1	;BREAK POINT INTERRUPT
+ 000E			INT_3_SEG	RW	1	
+ 0010			INT_4_OFF	RW	1	;OVERFLOW INTERRUPT
+ 0012			INT_4_SEG	RW	1
+ 0014			INT_5_OFF	RW	1	;ARRAY BOUNDS EXCEPTION
+ 0016			INT_5_SEG	RW	1
+ 0018			INT_6_OFF	RW	1	;UNUSED OPCODE EXCEPTION
+ 001A			INT_6_SEG	RW	1
+ 001C			INT_7_OFF	RW	1	;ESC OPCODE EXCEPTION
+ 001E			INT_7_SEG	RW	1
+ 0020			INT_8_OFF	RW	1	;TIMER 0 INTERRUPT VECTOR
+ 0022			INT_8_SEG	RW	1
+ 0024			INT_9_OFF	RW	1	;RESERVED BY INTEL
+ 0026			INT_9_SEG	RW	1
+ 0028			INT_10_OFF	RW	1	;DMA CHANNEL 0 INTERRUPT
+ 002A			INT_10_SEG	RW	1
+ 002C			INT_11_OFF	RW	1	;DMA CHANNEL 1 INTERRUPT
+ 002E			INT_11_SEG	RW	1
+ 0030			INT_12_OFF	RW	1	;INT0 INTERRUPT VECTOR
+ 0032			INT_12_SEG	RW	1
+ 0034			INT_13_OFF	RW	1	;INT1 INTERRUPT VECTOR
+ 0036			INT_13_SEG	RW	1
+ 0038			INT_14_OFF	RW	1	;INT2 INTERRUPT VECTOR
+ 003A			INT_14_SEG	RW	1
+ 003C			INT_15_OFF	RW	1	;INT3 INTERRUPT VECTOR (CONSOLE)
+ 003E			INT_15_SEG	RW	1
+ 0040			INT_16_OFF	RW	1	;IBM-PC VIDEO INTERRUPT
+ 0042			INT_16_SEG	RW	1
+ 0044			INT_17_OFF	RW	1	;
+ 0046			INT_17_SEG	RW	1
+ 0048			INT_18_OFF	RW	1	;TIMER 1 INTERRUPT NOT USED, TIMER 1 =
+ 004A			INT_18_SEG	RW	1	;BAUD RATE FOR USART
+ 004C			INT_19_OFF	RW	1	;TIMER 2 REAL TIME INTERRUPT
+ 004E			INT_19_SEG	RW	1
+
+				ORG	400H		;RAM area base address (Above the interrupt
+							;vector area)
+   000D 		CR		EQU	13
+   000A 		LF		EQU	10
+
+			;System Equates
+
+=			INCLUDE 	T186.LIB		;EQUATES FOR THUNDER186
+=			;last change 4/07/84 14:32
+=
+=			;Equates for THUNDER 186 processor board.
+=			; These equates may be included in a source file to define
+=			; the location of various I/O devices and system parameters.
+=			;
+=
+=			;Chip select register locations
+=
+=  FFA0 		UMCS_reg	EQU	0FFA0H		;Upper memory size
+=  FFA2 		LMCS_reg	EQU	0FFA2H		;Lower memory size
+=  FFA4 		PACS_reg	EQU	0FFA4H		;Peripheral chip select base address
+=  FFA6 		MMCS_reg	EQU	0FFA6H		;Mid-range memory base(not used)
+=  FFA8 		MPCS_reg	EQU	0FFA8H		;Mid-range memory size(not used)
+=
+=			;Chip select values for THUNDER 186 assumed by all LDP software.
+CP/M ASM86 1.1  SOURCE: T186MON.A86   THUNDER 186 Rev 0.1 4/27/84					       PAGE   2
+
+
+=
+=  F000 		UMCS_value	EQU	0F000H		;Assume top 64K = EPROM
+=  3FF8 		LMCS_value	EQU	03FF8H		;Bottom 256K = onboard RAM
+=  A038 		MPCS_value	EQU	0A038H		;Set base address out of way, PCS0-4
+=								;in I/O space PCS5=A0 PCS6=A1
+=  003A 		PACS_value	EQU	0003AH		;Base address of peripherals = 0
+=								; 2 waitstates obey ready line
+=  4038 		MMCS_value	EQU	04038H		;Unused, set for base of 40000H
+=
+=			;
+=			;Equates for the internal DMA controller
+=			;
+=			;		**** CHANEL 0 ****
+=			;
+=  FFC0 		SOURCE_PTR_LOWER_CH0	EQU	0FFC0H	;Source pointer bits 0 thru 15
+=  FFC2 		SOURCE_PTR_UPPER_CH0	EQU	0FFC2H	;Source pointer bits 16 thru 19
+=  FFC4 		DEST_PTR_LOWER_CH0	EQU	0FFC4H	;Destination pointer bits 0 thru 15
+=  FFC6 		DEST_PTR_UPPER_CH0	EQU	0FFC6H	;Destination pointer bits 16 thru 19
+=  FFC8 		TRANSFER_COUNT_CH0	EQU	0FFC8H	;16 bit transfer count(64K max)
+=  FFCA 		CONTROL_WORD_CH0	EQU	0FFCAH	;Control word for DMA
+=			;
+=			;		**** CHANNEL 1 ****
+=			;
+=  FFD0 		SOURCE_PTR_LOWER_CH1	EQU	0FFD0H	;Source pointer bits 0 thru 15
+=  FFD2 		SOURCE_PTR_UPPER_CH1	EQU	0FFD2H	;Source pointer bits 16 thru 19
+=  FFD4 		DEST_PTR_LOWER_CH1	EQU	0FFD4H	;Destination pointer bits 0 thru 15
+=  FFD6 		DEST_PTR_UPPER_CH1	EQU	0FFD6H	;Destination pointer bits 16 thru 19
+=  FFD8 		TRANSFER_COUNT_CH1	EQU	0FFD8H	;16 bit transfer count(64K max)
+=  FFDA 		CONTROL_WORD_CH1	EQU	0FFDAH	;Control word for DMA
+=			;
+=			; DMA control words commonly used
+=			;
+=  1486 		MEM_TO_IO	EQU	0001010010000110b
+=								 ;Memory source, I/O destination,
+=								 ;inc the source ptr each transfer
+=								 ;sync on dest
+=								 ;start the channel, do byte transfers
+=  A046 		IO_TO_MEM	EQU	1010000001000110b
+=								 ;I/O source, Memory destination,
+=								 ;inc the destination ptr each trans
+=								 ; sync on source,
+=								 ;start the channel, do byte transfers
+=			;
+=			; Timer Equates
+=			;
+=
+=  FF50 		COUNT_REG_TMR0		EQU	0FF50H	;Timer 0 count register
+=  FF52 		MAX_CNT_REGA_TMR0	EQU	0FF52H	;REGA max count value
+=  FF54 		MAX_CNT_REGB_TMR0	EQU	0FF54H	;REGB max count value
+=  FF56 		TMR0_CONTROL_REG	EQU	0FF56H	;Timer 1 control register
+=  FF58 		COUNT_REG_TMR1		EQU	0FF58H	;Timer 1 count register
+=  FF5A 		MAX_CNT_REGA_TMR1	EQU	0FF5AH	;REGA max count value
+=  FF5C 		MAX_CNT_REGB_TMR1	EQU	0FF5CH	;REGB max count value
+=  FF5E 		TMR1_CONTROL_REG	EQU	0FF5EH	;Timer 1 control register
+=  FF60 		COUNT_REG_TMR2		EQU	0FF60H	;Timer 2 count register
+=  FF62 		MAX_CNT_REG_TMR2	EQU	0FF62H	;Timer 2 max count register
+=  FF66 		TMR2_CONTROL_REG	EQU	0FF66H	;Timer 2 control register
+=
+=  C003 		TMR0_CTRL_REG_VAL	EQU	1100000000000011B
+=							;Enable the counter, don't generate interrupts
+=							;reset max count, use input as enable of
+=							;counter(can only be enable, or retrigger),
+=							;don't prescale by timer 2, use internal
+=							;clocking, alternate between Max count reg A
+=							;and reg B, do continuously
+=  C003 		TMR1_CTRL_REG_VAL	EQU	TMR0_CTRL_REG_VAL
+=							;See above description
+=  E001 		TMR2_CTRL_REG_VAL	EQU	1110000000000001B
+=							;Enable counter, generate interrupts, reset
+=							;max count bit, use input as enable of counter
+=							;don't prescale, use internal clocking, always
+=							;reg A ( no reg B for TMR0), do continuously
+=
+=			;8 Mhz divisors for common baud rates
+CP/M ASM86 1.1  SOURCE: T186MON.A86   THUNDER 186 Rev 0.1 4/27/84					       PAGE   3
+
+
+=
+=  0006 		REGA_9600	EQU	6
+=  0007 		REGB_9600	EQU	7	;Divisor for 9600 BAUD
+=  000D 		REGA_4800	EQU	13
+=  000D 		REGB_4800	EQU	13	;Divisor for 4800 BAUD
+=  001A 		REGA_2400	EQU	26
+=  001A 		REGB_2400	EQU	26	;Divisor for 2400 BAUD
+=  0034 		REGA_1200	EQU	52
+=  0034 		REGB_1200	EQU	52	;Divisor for 1200 BAUD
+=  00D0 		REGA_300	EQU	208
+=  00D1 		REGB_300	EQU	209	;Divisor for 300 BAUD
+=  0238 		REGA_110	EQU	568	
+=  0238 		REGB_110	EQU	568	;Divisor for 300 BAUD
+=
+=			;8 Mhz divisor for 10 Ms interrupt rate for TMR2
+=
+=  4E20 		TMR2_REGA_DIVISOR	EQU	20000
+=
+=			;Interrupt controller equates. The interrupt controller is used in master
+=			;mode. Only timer 2 is allowed to generate interrupts. On initialization
+=			;the console interrupt is enabled.
+=
+=  FF22 		EOI_REG 		EQU	0FF22H	;End of interrupt register
+=  FF24 		POLL_REG		EQU	0FF24H	;Poll register to detrermine who's
+=								;requesting. Reading will acknoledge
+=								;the interrupt.
+=  FF26 		POLL_STATUS_REG 	EQU	0FF26H	;Gets the interrupt status with out
+=								;acking the interrupt.
+=  FF28 		MASK_REG		EQU	0FF28H	;Can mask out any interrupt
+=  FF2A 		PRIORITY_MASK_REG	EQU	0FF2AH	;prevents interrupts of lower priority
+=								;than that set in this register from
+=								;interrupting the processor
+=  FF2C 		IN_SERVICE_REG		EQU	0FF2CH	;Bits correspond to interrupts
+=								;which are being serviced
+=  FF2E 		INTERRUPT_REQ_REG	EQU	0FF2EH	;Bits correspond to interrupts
+=								;requesting service
+=  FF30 		INTERRUPT_CTRL_STATUS	EQU	0FF30H	;Status of timer interrups and DMA
+=								;disable bit
+=  FF32 		PIC_TMR_CTRL_REG	EQU	0FF32H	;
+=  FF34 		PIC_DMA0_CTRL_REG	EQU	0FF34H
+=  FF36 		PIC_DMA1_CTRL_REG	EQU	0FF36H
+=  FF38 		INT0_CTRL_REG		EQU	0FF38H
+=  FF3A 		INT1_CTRL_REG		EQU	0FF3AH
+=  FF3C 		INT2_CTRL_REG		EQU	0FF3CH
+=  FF3E 		INT3_CTRL_REG		EQU	0FF3EH
+=
+=			;
+=			; I/O device equates for THUNDER 186
+=			;
+=  0080 		BASE			EQU	80H
+=			; Serial port equates
+=
+=  0080 		SER_PORT1_DATA		EQU	BASE+0
+=  0082 		SER_PORT1_COMMAND	EQU	BASE+2
+=  0082 		SER_PORT1_STATUS	EQU	BASE+2
+=  0001 		TXRDY			EQU	1
+=  0002 		RXRDY			EQU	2
+=
+=  00C0 		SER_PORT2_DATA		EQU	BASE+40H
+=  00C2 		SER_PORT2_COMMAND	EQU	BASE+42H
+=  00C2 		SER_PORT2_STATUS	EQU	BASE+42H
+=
+=			;8251A Commands
+=
+=  0040 		USART_RESET		EQU	40H
+=  00CE 		USART_MODE		EQU	11001110B ;8 BIT, 2 STOP, X16 MODE
+=  0037 		USART_INST		EQU	00110111B ;ENABLE RX AND TX ASSERT DTR, RTS
+=
+=			; Parallel port equates
+=
+=  00D0 		PORTA			EQU	BASE+50H
+=  00D2 		PORTB			EQU	BASE+52H
+=  00D4 		PORTC			EQU	BASE+54H
+=  00D2 		SWITCH_PORT		EQU	PORTB
+CP/M ASM86 1.1  SOURCE: T186MON.A86   THUNDER 186 Rev 0.1 4/27/84					       PAGE   4
+
+
+=  000F 		SWITCH_MASK		EQU	00001111B	;ONLY BITS 0 TO 3
+=  00D6 		PAR_CTRL		EQU	BASE+56H
+=  0082 		PAR_PORT_MODE		EQU	82H		;A AND C OUT, B IN
+=  000F 		PORTC_INITIAL		EQU	00001111B	;INITIAL SETTING FOR PORTC
+=
+=			;*********************	PORT C BIT ASSIGNMENTS **************************
+=			;BIT 0 - PRINTER STROBE, ACTIVE LOW
+=			;BIT 1 - AUTO FEED PRINTER INPUT, ACTIVE LOW
+=			;BIT 2 - PRINTER INIT INPUT, ACTIVE LOW
+=			;BIT 3 - PRINTER SELECT INPUT, ACTIVE LOW
+=			;BIT 4 - PRINTER INTERRUPT CLEAR BIT, ACTIVE LOW
+=			;BIT 5 - FLOPPY DRIVE READY SIGNAL. This signal output is used to assert
+=			;	 the READY status of the FDC for drives that do not have ready status
+=			;	 signals
+=			;BIT 6 - FDC TERMINAL COUNT INPUT. Used to terminate a command in progress.
+=			;BIT 7 - FDC DRIVE TYPE SELECT. When set high sellects 8" dirves and when
+=                       ;       set low sellects 5 1/4" drives.
+=			;************************************************************************
+=
+=			; Floppy disk equates
+=
+=  0092 		FDC_DATA		EQU	BASE+12H
+=  0092 		FDC_COMMAND		EQU	BASE+12H
+=  0090 		FDC_STATUS		EQU	BASE+10H
+=  0092 		FDC_RESULT		EQU	BASE+12H
+=  00A0 		FDC_DMA 		EQU	BASE+20H
+=
+=			;
+
+
+   00FF 		TRUE		EQU	0FFH
+   0000 		FALSE		EQU	0
+   0082 		STAT		EQU	SER_PORT1_STATUS ;CONSOLE STATUS PORT
+   0080 		DATA		EQU	SER_PORT1_DATA	;CONSOLE DATA PORT
+   0080 		SER1DATA	EQU	DATA		;ALTERNATE EQUATE FOR CONSLOE
+   0082 		SER1CTL 	EQU	STAT
+   0082 		SER1STATUS	EQU	STAT
+
+
+   0082 		USRTCMND	EQU	SER_PORT1_COMMAND
+   0002 		DAV		EQU	RXRDY		;UART DATA AVAILABLE BIT
+   0001 		TBMT		EQU	TXRDY		;UART transmitter ready bit
+   0050 		BUFLEN		EQU	80		;Maximum length of line input buffer
+   000A 		BPMAX		EQU	10		;Maximum number of breakpoints
+   0014 		BPLEN		EQU	BPMAX+BPMAX	;Length of breakpoint table
+   000E 		REGTABLEN	EQU	14		;Number of registers
+   002A 		PROMPT		EQU	'*'
+   0040 		CAN		EQU	'@'
+
+			;RAM area.
+
+ 0400			BRKCNT		RW	1		;Number of breakpoints
+ 0402			TCOUNT		RW	1		;Number of steps to trace
+ 0404			BPTAB		RB	BPLEN		;Breakpoint table
+ 0418			LINEBUF 	RB	BUFLEN+1	;Line input buffer
+ 0469					RW	25		;Working stack area
+   049B 		STACK		EQU	$
+
+			;Register save area
+
+ 049B			AXSAVE	RW	1
+ 049D			BXSAVE	RW	1
+ 049F			CXSAVE	RW	1
+ 04A1			DXSAVE	RW	1
+ 04A3			SPSAVE	RW	1
+ 04A5			BPSAVE	RW	1
+ 04A7			SISAVE	RW	1
+ 04A9			DISAVE	RW	1
+ 04AB			DSSAVE	RW	1
+ 04AD			ESSAVE	RW	1
+   04AF 		RSTACK	EQU	$
+ 04AF			SSSAVE	RW	1
+ 04B1			CSSAVE	RW	1
+ 04B3			IPSAVE	RW	1
+CP/M ASM86 1.1  SOURCE: T186MON.A86   THUNDER 186 Rev 0.1 4/27/84					       PAGE   5
+
+
+ 04B5			FSAVE	RW	1
+   04B7 		IOPB	EQU	$
+ 04B7			CMND		RB	1
+ 04B8			UNIT		RB	1
+ 04B9			CYL		RB	1
+ 04BA			HEAD		RB	1
+ 04BB			SECT		RB	1
+   04BB 		SECTOR		EQU	SECT
+ 04BC			NBYTES		RB	1
+ 04BD			EOT		RB	1
+ 04BE			GPL		RB	1
+ 04BF			DTL		RB	1
+ 04C0			RETRY		RB	1
+ 04C1			DMAOFF		RW	1
+ 04C3			DMASEG		RW	1
+ 04C5			RTT		RW	2
+ 04C9			READFLAG	RB	1
+ 04CA			TRANSFER	RW	1
+ 04CC			DISKTABLE	RB	4
+ 04D0			DONTPRNT	RB	1
+   04D1 		RSLTS		EQU	$
+ 04D1			ST0		RB	1
+ 04D2			ST1		RB	1
+ 04D3			ST2		RB	1
+ 04D4					RB	6
+ 04DA			MINI		RB	1
+ 04DB			TRACK		RB	1
+ 04DC			DBLSDD		RB	1
+ 04DD			RECORD		RW	1		;BEGINING RECORD TO TRANSFER
+
+ 04DF			FIRSTSEG	RW	1
+ 04E1			NUMSEGS 	RW	1
+ 04E3			LOOPCNT 	RW	1
+ 04E5			ERRORS		RW	1
+ 04E7			TIMES		RW	1
+
+			;Start of Monitor code
+
+   FE00 			CSEG	0FE00H
+				ORG	0
+			;Linkage to internal routines for reading and writing diskettes, console
+			;output and message output.
+ 0000 E80E0B	   0B11 DWRITE: CALL	WRITEDSK1
+ 0003 CB			RETF
+ 0004 E8160B	   0B1D DREAD:	CALL	READ1
+ 0007 CB			RETF
+ 0008 E86402	   026F CIN:	CALL	IN
+ 000B CB			RETF
+ 000C E8D102	   02E0 COUT:	CALL	OUT
+ 000F CB			RETF
+ 0010 E86902	   027C CMSG:	CALL	PMSG
+ 0013 CB			RETF
+ 0014 CF		INTRET: IRET			;DUMMY RETURN FOR EXCEPTIONS OF 80186
+
+			;One-time initialization
+			INIT:				;Place where initialization starts
+ 0015 FC			CLD
+ 0016 33C0			XOR	AX,AX		;GET 0
+ 0018 8BD8			MOV	BX,AX
+			MEMINITLOOP:
+ 001A B90080			MOV	CX,8000H	;64K WORDS
+ 001D 8BF8			MOV	DI,AX		;SET SEG REG'S
+ 001F 8EC3			MOV	ES,BX
+ 0021 F3AB			REP	STOSW		;FILL WITH 0'S
+ 0023 81C30010			ADD	BX,1000H
+ 0027 81FB0040			CMP	BX,4000H	;ONLY FILL FIRST 1/4 MEG (ON BOARD MEM ONLY)
+ 002B 75ED	   001A 	JNE	MEMINITLOOP
+			INITBAUD:
+ 002D E4D2			IN	AL,SWITCH_PORT	;GET THE INITIAL BAUD RATE FROM SWITCHES
+ 002F 2403			AND	AL,03H		;SAVE ONLY FIRST TWO SWITCHES
+ 0031 B400			MOV	AH,0
+ 0033 D1E0			SHL	AX,1		;SWITCHES TIMES 4
+ 0035 D1E0			SHL	AX,1
+ 0037 BB5300			MOV	BX,offset BAUDTABLE
+CP/M ASM86 1.1  SOURCE: T186MON.A86   THUNDER 186 Rev 0.1 4/27/84					       PAGE   6
+
+
+ 003A 03D8			ADD	BX,AX		;OFFSET INTO BAUD RATE TABLE
+ 003C 2E8B870000		MOV	AX,CS:[BX]
+ 0041 BA5AFF			MOV	DX,MAX_CNT_REGA_TMR1
+ 0044 EF			OUT	DX,AX
+ 0045 BA5CFF			MOV	DX,MAX_CNT_REGB_TMR1
+ 0048 83C302			ADD	BX,2
+ 004B 2E8B870000		MOV	AX,CS:[BX]
+ 0050 EF			OUT	DX,AX
+ 0051 EB10	   0063 	JMPS	PONTEST
+			BAUDTABLE:
+ 0053 0600			DW	REGA_9600	;9600
+ 0055 0700			DW	REGB_9600		
+ 0057 3400			DW	REGA_1200	;1200
+ 0059 3400			DW	REGB_1200
+ 005B D000			DW	REGA_300	;300
+ 005D D100			DW	REGB_300
+ 005F 3802			DW	REGA_110	;110
+ 0061 3802			DW	REGB_110
+
+			PONTEST:			;POWER ON TEST OF FIRST 1K OF RAM
+ 0063 33C0			XOR	AX,AX
+ 0065 8ED0			MOV	SS,AX
+ 0067 8ED8			MOV	DS,AX
+ 0069 8EC0			MOV	ES,AX
+ 006B BC9B04			MOV	SP,offset STACK ;INIT STACK POINTER FOR LATER
+ 006E B8AA55			MOV	AX,055AAH	;FIRST MEMORY TEST VALUE
+ 0071 BF0000			MOV	DI,0		;OFFSET TO START TESTING AT
+ 0074 B90004			MOV	CX,1024 	;NUMBER OF WORDS IN FIRST 2K BYTES
+ 0077 F3AB			REP	STOSW		;FILL FIRST 2K
+ 0079 BF0000			MOV	DI,0		;RE-ESTABLISH POINTER AND LOOP COUNT
+ 007C B90004			MOV	CX,1024
+ 007F F3AF			REPE	SCASW		;CHECK TO SEE IF DATA IS CORRECT
+ 0081 7518	   009B 	JNE	INITERROR	;IF NOT REPORT IS ON CONSOLE AT 9600 BAUD
+ 0083 B855AA			MOV	AX,0AA55H	;COMPLEMENT OF PREVIOS VALUE
+ 0086 BF0000			MOV	DI,0		;SET UP POINTER AND REP COUNT
+ 0089 B90004			MOV	CX,1024
+ 008C F3AB			REPE	STOSW		;FILL 1ST 2K
+ 008E BF0000			MOV	DI,0
+ 0091 B90004			MOV	CX,1024
+ 0094 F3AF			REPE	SCASW		;CHECK AGAIN
+ 0096 BABF00			MOV	DX,offset ADR_TEST ;POINT TO GO TO AFTER MESSAGE
+ 0099 7405	   00A0 	JE	INITOK		;MEMORY OK IF LAST COMPARE OK
+			INITERROR:
+ 009B BE5E01			MOV	SI,offset MEM_FAIL_MSG1 ;OTHERWISE REPORT MEMORY FAILURE
+ 009E EB03	   00A3 	JMPS	PON_PRNT	;REPORT ERROR
+			INITOK: 
+ 00A0 BEC401			MOV	SI,offset MEM_OK_MSG
+			PON_PRNT:
+ 00A3 E482			IN	AL,STAT 
+ 00A5 A801			TEST	AL,TBMT 	;OK TO SEND ?
+ 00A7 74FA	   00A3 	JZ	PON_PRNT	;IF NOT A ONE WAIT UNTIL IT IS
+ 00A9 2E8A840000		MOV	AL,CS:[SI]	;GET CHARACTER FROM MESSAGE
+ 00AE E680			OUT	DATA,AL 	;SEND IT
+ 00B0 46			INC	SI		;POINT TO NEXT CHARACTER
+ 00B1 84C0			TEST	AL,AL		;LAST CHARACTER?
+ 00B3 75EE	   00A3 	JNZ	PON_PRNT
+ 00B5 FFE2			JMP	DX		;RETURN (KIND OF)
+
+			ADR_TEST_FAIL:
+ 00B7 BE8701			MOV	SI,offset MEM_ADR_FAIL
+ 00BA BAFF00			MOV	DX,offset INIT2 ;CONTINUE EXECUTION ANYWAY
+ 00BD EBE4	   00A3 	JMPS	PON_PRNT
+
+			ADR_TEST:
+			;TEST MEMORY FOR ADDRESS TYPE FAILURES: INTERNAL RAM SHORTS, BOARD SHORTS
+			;ETC. FIRST WRITE THE ADDRESS AT THE WORD ADDRESS AND THEN VERIFY THE
+			;CORRECT ADDRESS IS PRESENT. THEN WRITE THE BYTE ADDRESS IN MEMORY AND
+			;VERIFY CORRECT. THIS TESTS BOTH BYTE AND WORD WRITE WRITE LOGIC.
+ 00BF BE0000			MOV	SI,0		;START WITH LOCATION 0
+ 00C2 B90004			MOV	CX,400H 	;DO FIRST 2K BYTES OF MEMORY
+			ADR_TEST_LOOP1:
+ 00C5 8934			MOV	[SI],SI 	;WRITE THE ADDRESS AT ADDRESS
+ 00C7 46			INC	SI
+ 00C8 46			INC	SI		;DOUBLE INC TO NEXT WORD
+CP/M ASM86 1.1  SOURCE: T186MON.A86   THUNDER 186 Rev 0.1 4/27/84					       PAGE   7
+
+
+ 00C9 E2FA	   00C5 	LOOP	ADR_TEST_LOOP1	;DO ALL 2K
+ 00CB BE0000			MOV	SI,0		;RE INIT FOR READ BACK
+ 00CE B90004			MOV	CX,400H
+			ADR_TEST_LOOP2:
+ 00D1 3934			CMP	[SI],SI 	;CHECK THE MEMORY LOCATION
+ 00D3 75E2	   00B7 	JNE	ADR_TEST_FAIL	;IF NOT THE SAME MEMORY FAILURE
+ 00D5 46			INC	SI
+ 00D6 46			INC	SI
+ 00D7 E2F8	   00D1 	LOOP	ADR_TEST_LOOP2	;DO UNTILL ALL 2K DONE
+ 00D9 BF0000			MOV	DI,0		;NOW INIT FOR BYTE ADDRESS TEST
+ 00DC B90008			MOV	CX,800H 	;2K BYTES
+ 00DF B000			MOV	AL,0		;INITIAL VALUE
+			ADR_TEST_LOOP3: 
+ 00E1 AA			STOSB			;PUT IT IN MEMORY
+ 00E2 FEC0			INC	AL		;NEXT VALUE
+ 00E4 E2FB	   00E1 	LOOP	ADR_TEST_LOOP3	;DO FULL 2K
+ 00E6 BE0000			MOV	SI,0		;NOW RE-INIT FOR READ VERIFY
+ 00E9 B90008			MOV	CX,800H 	;2K AGAIN
+ 00EC B400			MOV	AH,0		;INITIAL VALUE OF TEST BYTE
+			ADR_TEST_LOOP4:
+ 00EE AC			LODSB			;GET MEMORY VALUE
+ 00EF 3AC4			CMP	AL,AH
+ 00F1 75C4	   00B7 	JNE	ADR_TEST_FAIL
+ 00F3 FEC4			INC	AH		;NEXT TEST VALUE
+ 00F5 E2F7	   00EE 	LOOP	ADR_TEST_LOOP4	;DO ALL
+ 00F7 BAFF00			MOV	DX,offset INIT2
+ 00FA BEA701			MOV	SI,offset MEM_ADR_OK
+ 00FD EBA4	   00A3 	JMPS	PON_PRNT
+
+			INIT2:
+			;IF NO ERROR OR AFTER ERROR REPORTED
+			;EXECUTION CONTINUES
+ 00FF BF0000			MOV	DI,0			;NOW ZERO FIRST 2K
+ 0102 B90004			MOV	CX,1024
+ 0105 B80000			MOV	AX,0
+ 0108 F3AB			REP	STOSW
+ 010A C70600001400		MOV	INT0IP,offset INTRET
+ 0110 8C0E0200			MOV	INT0CS,CS		;SET FIRTS 17 INTERRUPT VECTORS FOR NO EFFECT
+ 0114 BE0000			MOV	SI,0			; EFFECT, JUST DOES AN IRET
+ 0117 BF0400			MOV	DI,4
+ 011A B92000			MOV	CX,16*2 		;NUMBER OF ADDITIONAL INTERRUPT VECTORS TO SET
+ 011D F3A5			REP	MOVSW
+ 011F 800EB60402		OR	byte Ptr FSAVE+1,2	;Enable interrupts in REG save area
+ 0124 B90400			MOV	CX,4
+ 0127 B85000			MOV	AX,50H
+ 012A BFAB04			MOV	DI,offset DSSAVE
+ 012D F3AB			REP	STOSW			;Set segment reg. images to 40H
+ 012F C706A3040004		MOV	SPSAVE,400H
+ 0135 C706AF040000		MOV	SSSAVE,0
+
+			;Initnialize the 8272
+ 013B B003			MOV	AL,3		;SPECIFY COMMAND
+ 013D E8070D	   0E47 	CALL	OUTFDC
+ 0140 B08F			MOV	AL,08FH 	;8MS STEP 240MS UNLOAD TIME
+ 0142 E8020D	   0E47 	CALL	OUTFDC
+ 0145 B080			MOV	AL,80H		;LOAD + SETTLE TIME=128 ms
+ 0147 E8FD0C	   0E47 	CALL	OUTFDC
+			;set up console interrupt
+ 014A C7063C00640A		MOV	INT_15_OFF,offset INT
+ 0150 8C0E3E00			MOV	INT_15_SEG,CS
+ 0154 BA3EFF			MOV	DX,INT3_CTRL_REG	;TURN ON CONSOLE INTERRUPT
+ 0157 B81700			MOV	AX,00010111B		;PRIORITY 7 LEVEL TRIGERED
+ 015A EF			OUT	DX,AX
+ 015B E98100	   01DF 	JMP	MONITOR 	;GO CHECK THE BAUDRATE
+
+			MEM_FAIL_MSG1:
+ 015E 0D0A4D656D6F		DB	CR,LF,'Memory failure or memory not present',CR,LF,0
+      727920666169
+      6C757265206F
+      72206D656D6F
+      7279206E6F74
+      207072657365
+      6E740D0A00
+			MEM_ADR_FAIL:
+CP/M ASM86 1.1  SOURCE: T186MON.A86   THUNDER 186 Rev 0.1 4/27/84					       PAGE   8
+
+
+ 0187 0D0A4D656D6F		DB	CR,LF,'Memory address test failure',cr,lf,0
+      727920616464
+      726573732074
+      657374206661
+      696C7572650D
+      0A00
+			MEM_ADR_OK:
+ 01A7 0D0A4D656D6F		DB	CR,LF,'Memory address test pass',cr,lf,0
+      727920616464
+      726573732074
+      657374207061
+      73730D0A00
+			MEM_OK_MSG:
+ 01C4 0D0A506F7765		DB	CR,LF,'Power on test complete',cr,lf,0
+      72206F6E2074
+      65737420636F
+      6D706C657465
+      0D0A00
+
+			;Initialization complete, including baud rate.
+
+			MONITOR:
+			; Do auto boot if sense switch 0 is on.
+ 01DF BF1804			MOV	DI,offset LINEBUF
+ 01E2 C6050D			MOV	byte ptr [DI],13  ;No breakpoints after boot
+ 01E5 E4D2			IN	AL,SWITCH_PORT	;GET FDC EXTERNAL PORT
+ 01E7 A804			TEST	AL,04H		;IS SWITCH 3 ON?
+ 01E9 7503	   01EE 	JNZ	DOMON		;GO TO MONITOR IF IT ISNT ON
+ 01EB E98B05	   0779 	JMP	BOOT
+			DOMON:
+ 01EE BEE10A			MOV	SI,offset HEADER
+ 01F1 E89500	   0289 	CALL	PRINTMES
+			COMMAND:
+			;Re-establish initial conditions
+ 01F4 FC			CLD
+ 01F5 33C0			XOR	AX,AX
+ 01F7 8ED8			MOV	DS,AX
+ 01F9 8EC0			MOV	ES,AX
+ 01FB BC9B04			MOV	SP,offset STACK
+ 01FE C7063C00640A		MOV	INT_15_OFF,offset INT ;SET USART INTERRUPT VECTOR
+ 0204 8C0E3E00			MOV	INT_15_SEG,CS
+ 0208 B02A			MOV	AL,PROMPT
+ 020A E8D300	   02E0 	CALL	OUT
+ 020D E81E00	   022E 	CALL	INBUF		;Get command line
+			;From now and throughout command line processing, DI points
+			;to next character in command line to be processed.
+ 0210 E88A00	   029D 	CALL	SCANB		;Scan off leading blanks
+ 0213 74DF	   01F4 	JZ	COMMAND 	;Null command?
+ 0215 8A05			MOV	AL,[DI] 	;AL=first non-blank character
+			;Prepare command letter for table lookup
+ 0217 2C42			SUB	AL,'B'		;Low end range check
+ 0219 7210	   022B 	JC	ERR1
+ 021B 3C16			CMP	AL,'W'+1-'B'	;UPPER END RANGE CHECK
+ 021D 730C	   022B 	JNC	ERR1
+ 021F 47			INC	DI
+ 0220 D0E0			SHL	AL,1		;Times two
+ 0222 98			CBW			;Now a 16-bit quantity
+ 0223 93			XCHG	BX,AX		;In BX we can address with it
+ 0224 2EFF97F502		CALL	CS:word ptr COMTAB[BX]	;Execute command
+ 0229 EBC9	   01F4 	JMPS	COMMAND 	;Get next command
+ 022B E9B902	   04E7 ERR1:	JMP	ERROR
+
+			;Get input line
+
+			INBUF:
+ 022E BF1804			MOV	DI,offset LINEBUF ;Next empty buffer location
+ 0231 33C9			XOR	CX,CX		;Character count
+			GETCH:
+ 0233 E83900	   026F 	CALL	IN		;Get input character
+ 0236 3C20			CMP	AL,20H		;Check for control characters
+ 0238 721B	   0255 	JC	CONTROL
+ 023A 3C7F			CMP	AL,7FH		;RUBOUT is a backspace
+ 023C 740E	   024C 	JZ	BACKSP
+ 023E E89F00	   02E0 	CALL	OUT		;Echo character
+CP/M ASM86 1.1  SOURCE: T186MON.A86   THUNDER 186 Rev 0.1 4/27/84					       PAGE   9
+
+
+ 0241 3C40			CMP	AL,CAN		;Cancel line?
+ 0243 7425	   026A 	JZ	KILL
+ 0245 AA			STOSB			;Put in input buffer
+ 0246 41			INC	CX		;Bump character count
+ 0247 83F950			CMP	CX,BUFLEN	;Buffer full?
+ 024A 7EE7	   0233 	JLE	GETCH		;Drop in to backspace if full
+			BACKSP:
+ 024C E3E5	   0233 	JCXZ	GETCH		;Can't backspace over nothing
+ 024E 4F			DEC	DI		;Drop pointer
+ 024F 49			DEC	CX		;and character count
+ 0250 E83300	   0286 	CALL	BACKUP		;Send physical backspace
+ 0253 EBDE	   0233 	JMPS	GETCH		;Get next char.
+			CONTROL:
+ 0255 3C08			CMP	AL,8		;Check for backspace
+ 0257 74F3	   024C 	JZ	BACKSP
+ 0259 3C0D			CMP	AL,13		;Check for carriage return
+ 025B 75D6	   0233 	JNZ	GETCH		;Ignore all other control char.
+ 025D AA			STOSB			;Put the car. ret. in buffer
+ 025E BF1804			MOV	DI,offset LINEBUF ;Set up DI for command processing
+
+			;Output CR/LF sequence
+
+			CRLF:
+ 0261 B00D			MOV	AL,13
+ 0263 E87A00	   02E0 	CALL	OUT
+ 0266 B00A			MOV	AL,10
+ 0268 EB76	   02E0 	JMPS	OUT
+
+			;Cancel input line
+
+			KILL:
+ 026A E8F4FF	   0261 	CALL	CRLF
+ 026D EB85	   01F4 	JMPS	COMMAND
+
+			;Character input routine
+
+			IN:
+ 026F FA			CLI			;Poll, don't interrupt
+ 0270 E482			IN	AL,STAT
+ 0272 A802			TEST	AL,DAV
+ 0274 74F9	   026F 	JZ	IN		;Loop until ready
+ 0276 E480			IN	AL,DATA
+ 0278 247F			AND	AL,7FH		;Only 7 bits
+ 027A FB			STI			;Interrupts OK now
+			RET1:
+ 027B C3			RET
+
+			; Print message routine for rom call
+			;
+			PMSG:			;DS:SI = Pointer to message
+ 027C AC			LODSB
+ 027D 84C0			TEST	AL,AL	;0 = END OF MESSAGE
+ 027F 74FA	   027B 	JZ	RET1
+ 0281 E85C00	   02E0 	CALL	OUT
+ 0284 EBF6	   027C 	JMPS	PMSG
+				
+
+			;Physical backspace - blank, backspace, blank
+
+			BACKUP:
+ 0286 BE0D0B			MOV	SI,offset BACMES
+			;Print ASCII message. Last char has bit 7 set
+
+			PRINTMES:
+ 0289 2EAC			LODS	CS:AL		;Get char to print
+ 028B 84C0			TEST	AL,AL		;Is it a 0
+ 028D 74EC	   027B 	JZ	RET1		;If it is quit
+ 028F E84E00	   02E0 	CALL	OUT
+ 0292 EBF5	   0289 	JMPS	PRINTMES
+
+			;Scan for parameters of a command
+
+			SCANP:
+ 0294 E80600	   029D 	CALL	SCANB		;Get first non-blank
+CP/M ASM86 1.1  SOURCE: T186MON.A86   THUNDER 186 Rev 0.1 4/27/84					       PAGE  10
+
+
+ 0297 803D2C			CMP	byte ptr [DI],','	;One comma between params OK
+ 029A 750A	   02A6 	JNE	EOLCHK		;If not comma, we found param
+ 029C 47			INC	DI		;Skip over comma
+
+			;Scan command line for next non-blank character
+
+			SCANB:
+ 029D B020			MOV	AL,' '
+ 029F 51			PUSH	CX		;Don't disturb CX
+ 02A0 B1FF			MOV	CL,-1		;but scan as many as necessary
+ 02A2 F3AE			REPE	SCASB
+ 02A4 4F			DEC	DI		;Back up to first non-blank
+ 02A5 59			POP	CX
+			EOLCHK:
+ 02A6 803D0D			CMP	byte ptr [DI],13
+ 02A9 C3			RET
+
+			;Print the 5-digit hex address of SI and DS
+
+			OUTSI:
+ 02AA 8CDA			MOV	DX,DS		;Put DS where we can work with it
+ 02AC B400			MOV	AH,0		;Will become high bits of DS
+ 02AE E87E00	   032F 	CALL	SHIFT4		;Shift DS four bits
+ 02B1 03D6			ADD	DX,SI		;Compute absolute address
+ 02B3 EB09	   02BE 	JMPS	OUTADD		;Finish below
+
+			;Print 5-digit hex address of DI and ES
+			;Same as OUTSI above
+
+			OUTDI:
+ 02B5 8CC2			MOV	DX,ES
+ 02B7 B400			MOV	AH,0
+ 02B9 E87300	   032F 	CALL	SHIFT4
+ 02BC 03D7			ADD	DX,DI
+			;Finish OUTSI here too
+			OUTADD:
+ 02BE 80D400			ADC	AH,0		;Add in carry to high bits
+ 02C1 E81200	   02D6 	CALL	HIDIG		;Output hex value in AH
+
+			;Print out 16-bit value in DX in hex
+
+			OUT16:
+ 02C4 8AC6			MOV	AL,DH		;High-order byte first
+ 02C6 E80200	   02CB 	CALL	HEX
+ 02C9 8AC2			MOV	AL,DL		;Then low-order byte
+
+			;Output byte in AL as two hex digits
+
+			HEX:
+ 02CB 8AE0			MOV	AH,AL		;Save for second digit
+			;Shift high digit into low 4 bits
+ 02CD 51			PUSH	CX
+ 02CE B104			MOV	CL,4
+ 02D0 D2E8			SHR	AL,CL
+ 02D2 59			POP	CX
+
+ 02D3 E80200	   02D8 	CALL	DIGIT		;Output first digit
+			HIDIG:
+ 02D6 8AC4			MOV	AL,AH		;Now do digit saved in AH
+			DIGIT:
+ 02D8 240F			AND	AL,0FH		;Mask to 4 bits
+			;Trick 6-byte hex conversion works on 8086 too.
+ 02DA 0490			ADD	AL,90H
+ 02DC 27			DAA
+ 02DD 1440			ADC	AL,40H
+ 02DF 27			DAA
+
+			;Console output of character in AL
+
+			OUT:
+ 02E0 50			PUSH	AX		;Character to output on stack
+			OUT1:
+ 02E1 E482			IN	AL,STAT
+ 02E3 A801			TEST	AL,TBMT
+CP/M ASM86 1.1  SOURCE: T186MON.A86   THUNDER 186 Rev 0.1 4/27/84					       PAGE  11
+
+
+ 02E5 74FA	   02E1 	JZ	OUT1		;Wait until ready
+ 02E7 58			POP	AX
+ 02E8 E680			OUT	DATA,AL 
+ 02EA C3			RET
+
+			;Output one space
+
+			BLANK:
+ 02EB B020			MOV	AL,' '
+ 02ED EBF1	   02E0 	JMPS	OUT
+
+			;Output the number of blanks in CX
+
+			TAB:
+ 02EF E8F9FF	   02EB 	CALL	BLANK
+ 02F2 E2FB	   02EF 	LOOP	TAB
+ 02F4 C3			RET
+
+			;Command Table. Command letter indexes into table to get
+			;address of command. PERR prints error for no such command.
+
+			COMTAB:
+ 02F5 7907			DW	BOOT		;B
+ 02F7 3C08			DW	CONVERT 	;C-CONVERT DECIMAL TO HEX
+ 02F9 8B03			DW	DUMP		;D
+ 02FB 0605			DW	ENTER		;E
+ 02FD 1504			DW	FILL		;F
+ 02FF 130A			DW	GO		;G
+ 0301 8208			DW	HEXARITH	;H-HEX ARITHMETIC +,-,*,/
+ 0303 F509			DW	INPUT		;I
+ 0305 E604			DW	PERR		;J
+ 0307 E604			DW	PERR		;K
+ 0309 E406			DW	LOAD		;L- LOAD SECTORS FROM DISK
+ 030B E803			DW	MOVE		;M
+ 030D E604			DW	PERR		;N
+ 030F 020A			DW	OUTPUT		;O
+ 0311 E604			DW	PERR		;P
+ 0313 E604			DW	PERR		;Q
+ 0315 A705			DW	REG		;R
+ 0317 3804			DW	SEARCH		;S
+ 0319 0909			DW	TRACE		;T
+ 031B E604			DW	PERR		;U-ERROR
+ 031D F70E			DW	VTEST		;V-MEMORY TESTS
+ 031F FA06			DW	WRITE		;W-WRITE RECORDS TO DISK
+
+			;Given 20-bit address in AH:DX, breaks it down to a segment
+			;number in AX and a displacement in DX. Displacement is 
+			;always zero except for least significant 4 bits.
+
+			GETSEG:
+ 0321 8AC2			MOV	AL,DL
+ 0323 240F			AND	AL,0FH		;AL has least significant 4 bits
+ 0325 E80700	   032F 	CALL	SHIFT4		;4-bit left shift of AH:DX
+ 0328 8AD0			MOV	DL,AL		;Restore lowest 4 bits
+ 032A 8AC6			MOV	AL,DH		;Low byte of segment number
+ 032C 32F6			XOR	DH,DH		;Zero high byte of displacement
+ 032E C3			RET
+
+			;Shift AH:DX left 4 bits
+
+			SHIFT4:
+ 032F D1E2			SHL	DX,1
+ 0331 D0D4			RCL	AH,1	;1
+ 0333 D1E2			SHL	DX,1
+ 0335 D0D4			RCL	AH,1	;2
+ 0337 D1E2			SHL	DX,1
+ 0339 D0D4			RCL	AH,1	;3
+ 033B D1E2			SHL	DX,1
+ 033D D0D4			RCL	AH,1	;4
+ 033F C3		RET2:	RET
+
+			;RANGE - Looks for parameters defining an address range.
+			;The first parameter is a hex number of 5 or less digits
+			;which specifies the starting address. The second parameter
+CP/M ASM86 1.1  SOURCE: T186MON.A86   THUNDER 186 Rev 0.1 4/27/84					       PAGE  12
+
+
+			;may specify the ending address, or it may be preceded by
+			;"L" and specify a length (4 digits max), or it may be
+			;omitted and a length of 128 bytes is assumed. Returns with
+			;segment no. in AX and displacement (0-F) in DX.
+
+			RANGE:
+ 0340 B90500			MOV	CX,5		;5 digits max
+ 0343 E82201	   0468 	CALL	GETHEX		;Get hex number
+ 0346 50			PUSH	AX		;Save high 4 bits
+ 0347 52			PUSH	DX		;Save low 16 bits
+ 0348 E849FF	   0294 	CALL	SCANP		;Get to next parameter
+ 034B 803D4C			CMP	byte ptr [DI],'L' ;Length indicator?
+ 034E 741C	   036C 	JE	GETLEN
+ 0350 BA8000			MOV	DX,128		;Default length
+ 0353 E83001	   0486 	CALL	HEXIN		;Second parameter present?
+ 0356 721B	   0373 	JC	RNGRET		;If not, use default
+ 0358 B90500			MOV	CX,5		;5 hex digits
+ 035B E80A01	   0468 	CALL	GETHEX		;Get ending address
+ 035E 8BCA			MOV	CX,DX		;Low 16 bits of ending addr.
+ 0360 5A			POP	DX		;Low 16 bits of starting addr.
+ 0361 5B			POP	BX		;BH=hi 4 bits of start addr.
+ 0362 2BCA			SUB	CX,DX		;Compute range
+ 0364 1AE7			SBB	AH,BH		;Finish 20-bit subtract
+ 0366 751D	   0385 	JNZ	RNGERR		;Range must be less than 64K
+ 0368 93			XCHG	AX,BX		;AH=starting, BH=ending hi 4 bits
+ 0369 41			INC	CX		;Range must include ending location
+ 036A EB0B	   0377 	JMPS	RNGCHK		;Finish range testing and return
+			GETLEN:
+ 036C 47			INC	DI		;Skip over "L" to length
+ 036D B90400			MOV	CX,4		;Length may have 4 digits
+ 0370 E8F500	   0468 	CALL	GETHEX		;Get the range
+			RNGRET:
+ 0373 8BCA			MOV	CX,DX		;Length
+ 0375 5A			POP	DX		;Low 16 bits of starting addr.
+ 0376 58			POP	AX		;AH=hi 4 bits of starting addr.
+
+			;RNGCHK verifies that the range lies entirely within one segment.
+			;CX=0 means count=10000H. Range is within one segment only if
+			;adding the low 4 bits of the starting address to the count is
+			;<=10000H, because segments can start only on 16-byte boundaries.
+
+			RNGCHK:
+ 0377 8BDA			MOV	BX,DX		;Low 16 bits of start addr.
+ 0379 81E30F00			AND	BX,0FH		;Low 4 bits of starting addr.
+ 037D E304	   0383 	JCXZ	MAXRNG		;If count=10000H then BX must be 0
+ 037F 03D9			ADD	BX,CX		;Must be <=10000H
+ 0381 739E	   0321 	JNC	GETSEG		;OK if strictly <
+			MAXRNG:
+			;If here because of JCXZ MAXRNG, we are testing if low 4 bits
+			;(in BX) are zero. If we dropped straight in, we are testing
+			;for BX+CX=10000H (=0). Either way, zero flag set means 
+			;withing range.
+ 0383 749C	   0321 	JZ	GETSEG
+			RNGERR:
+ 0385 B85247			MOV	AX,4700H+'R'	;RG ERROR
+ 0388 E91A03	   06A5 	JMP	ERR
+
+			;Dump an area of memory in both hex and ASCII
+
+			DUMP:
+ 038B E8B2FF	   0340 	CALL	RANGE		;Get range to dump
+ 038E 50			PUSH	AX		;Save segment
+ 038F E84E01	   04E0 	CALL	GETEOL		;Check for errors
+ 0392 1F			POP	DS		;Set segment
+ 0393 8BF2			MOV	SI,DX		;SI has displacement in segment
+			ROW:
+ 0395 E812FF	   02AA 	CALL	OUTSI		;Print address at start of line
+ 0398 56			PUSH	SI		;Save address for ASCII dump
+			BYTE0:
+ 0399 E84FFF	   02EB 	CALL	BLANK		;Space between bytes
+			BYTE1:
+ 039C AC			LODSB			;Get byte to dump
+ 039D E82BFF	   02CB 	CALL	HEX		;and display it
+ 03A0 5A			POP	DX		;DX has start addr. for ASCII dump
+CP/M ASM86 1.1  SOURCE: T186MON.A86   THUNDER 186 Rev 0.1 4/27/84					       PAGE  13
+
+
+ 03A1 49			DEC	CX		;Drop loop count
+ 03A2 7417	   03BB 	JZ	ASCII		;If through do ASCII dump
+ 03A4 8BC6			MOV	AX,SI
+ 03A6 A80F			TEST	AL,0FH		;On 16-byte boundary?
+ 03A8 740C	   03B6 	JZ	ENDROW
+ 03AA 52			PUSH	DX		;Didn't need ASCII addr. yet
+ 03AB A807			TEST	AL,7		;On 8-byte boundary?
+ 03AD 75EA	   0399 	JNZ	BYTE0
+ 03AF B02D			MOV	AL,'-'		;Mark every 8 bytes
+ 03B1 E82CFF	   02E0 	CALL	OUT
+ 03B4 EBE6	   039C 	JMPS	BYTE1
+			ENDROW:
+ 03B6 E80200	   03BB 	CALL	ASCII		;Show it in ASCII
+ 03B9 EBDA	   0395 	JMPS	ROW		;Loop until count is zero
+			ASCII:
+ 03BB 51			PUSH	CX		;Save byte count
+ 03BC 8BC6			MOV	AX,SI		;Current dump address
+ 03BE 8BF2			MOV	SI,DX		;ASCII dump address
+ 03C0 2BC2			SUB	AX,DX		;AX=length of ASCII dump
+			;Compute tab length. ASCII dump always appears on right side
+			;screen regardless of how many bytes were dumped. Figure 3
+			;characters for each byte dumped and subtract from 51, which
+			;allows a minimum of 3 blanks after the last byte dumped.
+ 03C2 8BD8			MOV	BX,AX
+ 03C4 D1E0			SHL	AX,1		;Length times 2
+ 03C6 03C3			ADD	AX,BX		;Length times 3
+ 03C8 B93300			MOV	CX,51
+ 03CB 2BC8			SUB	CX,AX		;Amount to tab in CX
+ 03CD E81FFF	   02EF 	CALL	TAB
+ 03D0 8BCB			MOV	CX,BX		;ASCII dump length back in CX
+			ASCDMP:
+ 03D2 AC			LODSB			;Get ASCII byte to dump
+ 03D3 247F			AND	AL,7FH		;ASCII uses 7 bits
+ 03D5 3C7F			CMP	AL,7FH		;Don't try to print RUBOUT
+ 03D7 7404	   03DD 	JZ	NOPRT
+ 03D9 3C20			CMP	AL,' '		;Check for control characters
+ 03DB 7302	   03DF 	JNC	PRIN
+			NOPRT:
+ 03DD B02E			MOV	AL,'.'		;If unprintable character
+			PRIN:
+ 03DF E8FEFE	   02E0 	CALL	OUT		;Print ASCII character
+ 03E2 E2EE	   03D2 	LOOP	ASCDMP		;CX times
+ 03E4 59			POP	CX		;Restore overall dump length
+ 03E5 E979FE	   0261 	JMP	CRLF		;Print CR/LF and return
+
+			;Block move one area of memory to another. Overlapping moves
+			;are performed correctly, i.e., so that a source byte is not
+			;overwritten until after it has been moved.
+
+			MOVE:
+ 03E8 E855FF	   0340 	CALL	RANGE		;Get range of source area
+ 03EB 51			PUSH	CX		;Save length
+ 03EC 50			PUSH	AX		;Save segment
+ 03ED 8BF2			MOV	SI,DX		;Set source displacement
+ 03EF B90500			MOV	CX,5		;Allow 5 digits
+ 03F2 E87300	   0468 	CALL	GETHEX		;in destination address
+ 03F5 E8E800	   04E0 	CALL	GETEOL		;Check for errors
+ 03F8 E826FF	   0321 	CALL	GETSEG		;Convert dest. to seg/disp
+ 03FB 8BFA			MOV	DI,DX		;Set dest. displacement
+ 03FD 5B			POP	BX		;Source segment
+ 03FE 8EDB			MOV	DS,BX
+ 0400 8EC0			MOV	ES,AX		;Destination segment
+ 0402 59			POP	CX		;Length
+ 0403 3BFE			CMP	DI,SI		;Check direction of move
+ 0405 1BC3			SBB	AX,BX		;Extend the CMP to 32 bits
+ 0407 7207	   0410 	JB	COPYLIST	;Move forward into lower mem.
+			;Otherwise, move backward. Figure end of source and destination
+			;areas and flip direction flag.
+ 0409 49			DEC	CX
+ 040A 03F1			ADD	SI,CX		;End of source area
+ 040C 03F9			ADD	DI,CX		;End of destination area
+ 040E FD			STD			;Reverse direction
+ 040F 41			INC	CX
+			COPYLIST:
+CP/M ASM86 1.1  SOURCE: T186MON.A86   THUNDER 186 Rev 0.1 4/27/84					       PAGE  14
+
+
+ 0410 A4			MOVSB	;Do at least 1 - Range is 1-10000H not 0-FFFFH
+ 0411 49			DEC	CX
+ 0412 F3A4			REP	MOVSB		;Block move
+ 0414 C3			RET
+
+			;Fill an area of memory with a list values. If the list
+			;is bigger than the area, don't use the whole list. If the
+			;list is smaller, repeat it as many times as necessary.
+
+			FILL:
+ 0415 E828FF	   0340 	CALL	RANGE		;Get range to fill
+ 0418 51			PUSH	CX		;Save length
+ 0419 50			PUSH	AX		;Save segment number
+ 041A 52			PUSH	DX		;Save displacement
+ 041B E8B400	   04D2 	CALL	GLIST		;Get list of values to fill with
+ 041E 5F			POP	DI		;Displacement in segment
+ 041F 07			POP	ES		;Segment
+ 0420 59			POP	CX		;Length
+ 0421 3BD9			CMP	BX,CX		;BX is length of fill list
+ 0423 BE1804			MOV	SI,offset LINEBUF ;List is in line buffer
+ 0426 E302	   042A 	JCXZ	BIGRNG
+ 0428 73E6	   0410 	JAE	COPYLIST	;If list is big, copy part of it
+			BIGRNG:
+ 042A 2BCB			SUB	CX,BX		;How much bigger is area than list?
+ 042C 87CB			XCHG	CX,BX		;CX=length of list
+ 042E 57			PUSH	DI		;Save starting addr. of area
+ 042F F3A4			REP	MOVSB			;Move list into area
+ 0431 5E			POP	SI
+			;The list has been copied into the beginning of the
+			;specified area of memory. SI is the first address
+			;of that area, DI is the end of the copy of the list
+			;plus one, which is where the list will begin to repeat.
+			;All we need to do now is copy [SI] to [DI] until the
+			;end of the memory area is reached. This will cause the
+			;list to repeat as many times as necessary.
+ 0432 8BCB			MOV	CX,BX		;Length of area minus list
+ 0434 06			PUSH	ES		;Different index register
+ 0435 1F			POP	DS		;requires different segment reg.
+ 0436 EBD8	   0410 	JMPS	COPYLIST	;Do the block move
+
+			;Search a specified area of memory for given list of bytes.
+			;Print address of first byte of each match.
+
+			SEARCH:
+ 0438 E805FF	   0340 	CALL	RANGE		;Get area to be searched
+ 043B 51			PUSH	CX		;Save count
+ 043C 50			PUSH	AX		;Save segment number
+ 043D 52			PUSH	DX		;Save displacement
+ 043E E89100	   04D2 	CALL	GLIST		;Get search list
+ 0441 4B			DEC	BX		;No. of bytes in list-1
+ 0442 5F			POP	DI		;Displacement within segment
+ 0443 07			POP	ES		;Segment
+ 0444 59			POP	CX		;Length to be searched
+ 0445 2BCB			SUB	CX,BX		;  minus length of list
+			SCAN:
+ 0447 BE1804			MOV	SI,offset LINEBUF ;List kept in line buffer
+ 044A AC			LODSB			;Bring first byte into AL
+			DOSCAN:
+ 044B AE			SCASB			;Search for first byte
+ 044C E0FD	   044B 	LOOPNE	DOSCAN		;Do at least once by using LOOP
+ 044E 754A	   049A 	JNZ	RET3		;Exit if not found
+ 0450 53			PUSH	BX		;Length of list minus 1
+ 0451 87D9			XCHG	BX,CX
+ 0453 57			PUSH	DI		;Will resume search here
+ 0454 F3A6			REPE	CMPSB		;Compare rest of string
+ 0456 8BCB			MOV	CX,BX		;Area length back in CX
+ 0458 5F			POP	DI		;Next search location
+ 0459 5B			POP	BX		;Restore list length
+ 045A 7508	   0464 	JNZ	TEST		;Continue search if no match
+ 045C 4F			DEC	DI		;Match address
+ 045D E855FE	   02B5 	CALL	OUTDI		;Print it
+ 0460 47			INC	DI		;Restore search address
+ 0461 E8FDFD	   0261 	CALL	CRLF
+			TEST:
+CP/M ASM86 1.1  SOURCE: T186MON.A86   THUNDER 186 Rev 0.1 4/27/84					       PAGE  15
+
+
+ 0464 E334	   049A 	JCXZ	RET3
+ 0466 EBDF	   0447 	JMPS	SCAN		;Look for next occurrence
+
+			;Get the next parameter, which must be a hex number.
+			;CX is maximum number of digits the number may have.
+
+			GETHEX:
+ 0468 E829FE	   0294 	CALL	SCANP		;Scan to next parameter
+			GETHEX1:
+ 046B 33D2			XOR	DX,DX		;Initialize the number
+ 046D 8AE6			MOV	AH,DH
+ 046F E81400	   0486 	CALL	HEXIN		;Get a hex digit
+ 0472 7273	   04E7 	JC	ERROR		;Must be one valid digit
+ 0474 8AD0			MOV	DL,AL		;First 4 bits in position
+			GETLP:
+ 0476 47			INC	DI		;Next char in buffer
+ 0477 49			DEC	CX		;Digit count
+ 0478 E80B00	   0486 	CALL	HEXIN		;Get another hex digit?
+ 047B 721D	   049A 	JC	RET3	;All done if no more digits
+ 047D E368	   04E7 	JCXZ	ERROR		;Too many digits?
+ 047F E8ADFE	   032F 	CALL	SHIFT4		;Multiply by 16
+ 0482 0AD0			OR	DL,AL		;and combine new digit
+ 0484 EBF0	   0476 	JMPS	GETLP		;Get more digits
+
+			;Check if next character in the input buffer is a hex digit
+			;and convert it to binary if it is. Carry set if not.
+
+			HEXIN:
+ 0486 8A05			MOV	AL,[DI]
+
+			;Check if AL has a hex digit and convert it to binary if it
+			;is. Carry set if not.
+
+			HEXCHK:
+ 0488 2C30			SUB	AL,'0'		;Kill ASCII numeric bias
+ 048A 720E	   049A 	JC	RET3
+ 048C 3C0A			CMP	AL,10
+ 048E F5			CMC
+ 048F 7309	   049A 	JNC	RET3		;OK if 0-9
+ 0491 2C07			SUB	AL,7		;Kill A-F bias
+ 0493 3C0A			CMP	AL,10
+ 0495 7203	   049A 	JC	RET3
+ 0497 3C10			CMP	AL,16
+ 0499 F5			CMC
+ 049A C3		RET3:	RET
+
+			;Process one parameter when a list of bytes is
+			;required. Carry set if parameter bad. Called by LIST
+
+			LISTITEM:
+ 049B E8F6FD	   0294 	CALL	SCANP		;Scan to parameter
+ 049E E8E5FF	   0486 	CALL	HEXIN		;Is it in hex?
+ 04A1 720B	   04AE 	JC	STRINGCHK	;If not, could be a string
+ 04A3 B90200			MOV	CX,2		;Only 2 hex digits for bytes
+ 04A6 E8BFFF	   0468 	CALL	GETHEX		;Get the byte value
+ 04A9 8817			MOV	[BX],DL 	;Add to list
+ 04AB 43			INC	BX
+ 04AC F8		GRET:	CLC			;Parameter was OK
+ 04AD C3			RET
+			STRINGCHK:
+ 04AE 8A05			MOV	AL,[DI] 	;Get first character of param
+ 04B0 3C27			CMP	AL,'''' 	;String?
+ 04B2 7406	   04BA 	JZ	STRING
+ 04B4 3C22			CMP	AL,'"'          ;Either quote is all right
+ 04B6 7402         04BA         JZ      STRING
+ 04B8 F9                        STC                     ;Not string, not hex - bad
+ 04B9 C3                        RET
+                        STRING:
+ 04BA 8AE0                      MOV     AH,AL           ;Save for closing quote
+ 04BC 47                        INC     DI
+                        STRNGLP:
+ 04BD 8A05                      MOV     AL,[DI]         ;Next char of string
+ 04BF 47                        INC     DI
+ 04C0 3C0D                      CMP     AL,13           ;Check for end of line
+CP/M ASM86 1.1  SOURCE: T186MON.A86   THUNDER 186 Rev 0.1 4/27/84                                             PAGE  16
+
+
+ 04C2 7423         04E7         JZ      ERROR           ;Must find a close quote
+ 04C4 3AC4                      CMP     AL,AH           ;Check for close quote
+ 04C6 7505         04CD         JNZ     STOSTRG         ;Add new character to list
+ 04C8 3A25                      CMP     AH,[DI]         ;Two quotes in a row?
+ 04CA 75E0         04AC         JNZ     GRET            ;If not, we're done
+ 04CC 47                        INC     DI              ;Yes - skip second one
+                        STOSTRG:
+ 04CD 8807                      MOV     [BX],AL         ;Put new char in list
+ 04CF 43                        INC     BX
+ 04D0 EBEB         04BD         JMPS    STRNGLP         ;Get more characters
+
+                        ;Get a byte list for ENTER, FILL or SEARCH. Accepts any number
+                        ;of 2-digit hex values or character strings in either single
+                        ;(') or double (") quotes.
+
+			GLIST:
+ 04D2 BB1804			MOV	BX,offset LINEBUF ;Put byte list in the line buffer
+			LISTLP:
+ 04D5 E8C3FF	   049B 	CALL	LISTITEM	;Process a parameter
+ 04D8 73FB	   04D5 	JNC	LISTLP		;If OK, try for more
+ 04DA 81EB1804			SUB	BX,(offset LINEBUF) ;BX now has no. of bytes in list
+ 04DE 7407	   04E7 	JZ	ERROR		;List must not be empty
+
+			;Make sure there is nothing more on the line except for
+			;blanks and carriage return. If there is, it is an
+			;unrecognized parameter and an error.
+
+			GETEOL:
+ 04E0 E8BAFD	   029D 	CALL	SCANB		;Skip blanks
+ 04E3 7502	   04E7 	JNZ	ERROR		;Better be a RETURN
+ 04E5 C3			RET
+
+			;Command error. DI has been incremented beyond the
+			;command letter so it must decremented for the
+			;error pointer to work.
+
+			PERR:
+ 04E6 4F			DEC	DI
+
+			;Syntax error. DI points to character in the input buffer
+			;which caused error. By subtracting from start of buffer,
+			;we will know how far to tab over to appear directly below
+			;it on the terminal. Then print "^ Error".
+
+			ERROR:
+ 04E7 81EF1704			SUB	DI,(offset LINEBUF)-1 ;How many char processed so far?
+ 04EB 8BCF			MOV	CX,DI		;Parameter for TAB in CX
+ 04ED E8FFFD	   02EF 	CALL	TAB		;Directly below bad char
+ 04F0 BE030B			MOV	SI,offset SYNERR ;Error message
+
+			;Print error message and abort to command level
+
+			PRINT:
+ 04F3 E893FD	   0289 	CALL	PRINTMES
+ 04F6 E9FBFC	   01F4 	JMP	COMMAND
+
+			;Short form of ENTER command. A list of values from the
+			;command line are put into memory without using normal
+			;ENTER mode.
+
+			GETLIST:
+ 04F9 E8D6FF	   04D2 	CALL	GLIST		;Get the bytes to enter
+ 04FC 5F			POP	DI		;Displacement within segment
+ 04FD 07			POP	ES		;Segment to enter into
+ 04FE BE1804			MOV	SI,offset LINEBUF	;List of bytes is in line buffer
+ 0501 8BCB			MOV	CX,BX		;Count of bytes
+ 0503 F3A4			REP	MOVSB			;Enter that byte list
+ 0505 C3			RET
+
+			;Enter values into memory at a specified address. If the
+			;line contains nothing but the address we go into "enter
+                        ;mode", where the address and its current value are printed
+			;and the user may change it if desired. To change, type in
+			;new value in hex. Backspace works to correct errors. If
+CP/M ASM86 1.1  SOURCE: T186MON.A86   THUNDER 186 Rev 0.1 4/27/84					       PAGE  17
+
+
+			;an illegal hex digit or too many digits are typed, the
+			;bell is sounded but it is otherwise ignored. To go to the
+			;next byte (with or without change), hit space bar. To
+			;back up to a previous address, type "-". On
+			;every 8-byte boundary a new line is started and the address
+			;is printed. To terminate command, type carriage return.
+			;   Alternatively, the list of bytes to be entered may be
+			;included on the original command line immediately following
+			;the address. This is in regular LIST format so any number
+			;of hex values or strings in quotes may be entered.
+
+			ENTER:
+ 0506 B90500			MOV	CX,5		;5 digits in address
+ 0509 E85CFF	   0468 	CALL	GETHEX		;Get ENTER address
+ 050C E812FE	   0321 	CALL	GETSEG		;Convert to seg/disp format
+			;Adjust segment and displacement so we are in the middle
+			;of the segment instead of the very bottom. This allows
+			;backing up a long way.
+			;	SUB	AH,8		;Adjust segment 32K down
+			;	ADD	DH,80H		; and displacement 32K up
+ 050F 50			PUSH	AX		;Save for later
+ 0510 52			PUSH	DX
+ 0511 E889FD	   029D 	CALL	SCANB		;Any more parameters?
+ 0514 75E3	   04F9 	JNZ	GETLIST 	;If not end-of-line get list
+ 0516 5F			POP	DI		;Displacement of ENTER
+ 0517 07			POP	ES		;Segment
+			GETROW:
+ 0518 E89AFD	   02B5 	CALL	OUTDI		;Print address of entry
+ 051B E8CDFD	   02EB 	CALL	BLANK		;Leave a space
+			GETBYTE:
+ 051E 268A05			MOV	AL,ES:[DI]	;Get current value
+ 0521 E8A7FD	   02CB 	CALL	HEX		;And display it
+ 0524 B02E			MOV	AL,'.'
+ 0526 E8B7FD	   02E0 	CALL	OUT		;Prompt for new value
+ 0529 B90200			MOV	CX,2		;Max of 2 digits in new value
+ 052C BA0000			MOV	DX,0		;Intial new value
+			GETDIG:
+ 052F E83DFD	   026F 	CALL	IN		;Get digit from user
+ 0532 8AE0			MOV	AH,AL		;Save
+ 0534 E851FF	   0488 	CALL	HEXCHK		;Hex digit?
+ 0537 86E0			XCHG	AH,AL		;Need original for echo
+ 0539 720C	   0547 	JC	NOHEX		;If not, try special command
+ 053B E8A2FD	   02E0 	CALL	OUT		;Echo to console
+ 053E 8AF2			MOV	DH,DL		;Rotate new value
+ 0540 8AD4			MOV	DL,AH		;And include new digit
+ 0542 E2EB	   052F 	LOOP	GETDIG		;At most 2 digits
+			;We have two digits, so all we will accept now is a command.
+			WAIT:
+ 0544 E828FD	   026F 	CALL	IN		;Get command character
+			NOHEX:
+ 0547 3C08			CMP	AL,8		;Backspace
+ 0549 7419	   0564 	JZ	BS
+ 054B 3C7F			CMP	AL,7FH		;RUBOUT
+ 054D 7415	   0564 	JZ	BS
+ 054F 3C2D			CMP	AL,'-'		;Back up to previous address
+ 0551 744D	   05A0 	JZ	PREV
+ 0553 3C0D			CMP	AL,13		;All done with command?
+ 0555 742F	   0586 	JZ	EOL
+ 0557 3C20			CMP	AL,' '		;Go to next address
+ 0559 7431	   058C 	JZ	NEXT
+			;If we got here, character was invalid. Sound bell.
+ 055B B007			MOV	AL,7
+ 055D E880FD	   02E0 	CALL	OUT
+ 0560 E3E2	   0544 	JCXZ	WAIT		;CX=0 means no more digits
+ 0562 EBCB	   052F 	JMPS	GETDIG		;Don't have 2 digits yet
+			BS:
+ 0564 80F902			CMP	CL,2		;CX=2 means nothing typed yet
+ 0567 74C6	   052F 	JZ	GETDIG		;Can't back up over nothing
+ 0569 FEC1			INC	CL		;Accept one more character
+ 056B 8AD6			MOV	DL,DH		;Rotate out last digit
+ 056D 8AF5			MOV	DH,CH		;Zero this digit
+ 056F E814FD	   0286 	CALL	BACKUP		;Physical backspace
+ 0572 EBBB	   052F 	JMPS	GETDIG		;Get more digits
+
+CP/M ASM86 1.1  SOURCE: T186MON.A86   THUNDER 186 Rev 0.1 4/27/84					       PAGE  18
+
+
+			;If new value has been entered, convert it to binary and
+			;put into memory. Always bump pointer to next location
+
+			STORE:
+ 0574 80F902			CMP	CL,2		;CX=2 means nothing typed yet
+ 0577 740B	   0584 	JZ	NOSTO		;So no new value to store
+			;Rotate DH left 4 bits to combine with DL and make a byte value
+ 0579 51			PUSH	CX
+ 057A B104			MOV	CL,4
+ 057C D2E6			SHL	DH,CL
+ 057E 59			POP	CX
+ 057F 0AD6			OR	DL,DH		;Hex is now converted to binary
+ 0581 268815			MOV	ES:[DI],DL		;Store new value
+			NOSTO:
+ 0584 47			INC	DI		;Prepare for next location
+ 0585 C3			RET
+			EOL:
+ 0586 E8EBFF	   0574 	CALL	STORE		;Enter the new value
+ 0589 E9D5FC	   0261 	JMP	CRLF		;CR/LF and terminate
+			NEXT:
+ 058C E8E5FF	   0574 	CALL	STORE		;Enter new value
+ 058F 41			INC	CX		;Leave a space plus two for
+ 0590 41			INC	CX		;  each digit not entered
+ 0591 E85BFD	   02EF 	CALL	TAB
+ 0594 8BC7			MOV	AX,DI		;Next memory address
+ 0596 2407			AND	AL,7		;Check for 8-byte boundary
+ 0598 7584	   051E 	JNZ	GETBYTE 	;Take 8 per line
+			NEWROW:
+ 059A E8C4FC	   0261 	CALL	CRLF		;Terminate line
+ 059D E978FF	   0518 	JMP	GETROW		;Print address on new line
+			PREV:
+ 05A0 E8D1FF	   0574 	CALL	STORE		;Enter the new value
+			;DI has been bumped to next byte. Drop it 2 to go to previous addr
+ 05A3 4F			DEC	DI
+ 05A4 4F			DEC	DI
+ 05A5 EBF3	   059A 	JMPS	NEWROW		;Terminate line after backing up
+
+			;Perform register dump if no parameters or set register if a
+			;register designation is a parameter.
+
+			REG:
+ 05A7 E8EAFC	   0294 	CALL	SCANP
+ 05AA 7463	   060F 	JZ	DISPREG
+ 05AC 8A15			MOV	DL,[DI]
+ 05AE 47			INC	DI
+ 05AF 8A35			MOV	DH,[DI]
+ 05B1 80FE0D			CMP	DH,13
+ 05B4 7477	   062D 	JZ	FLAG			;*********
+ 05B6 47			INC	DI
+ 05B7 E826FF	   04E0 	CALL	GETEOL
+ 05BA 80FE20			CMP	DH,' '
+ 05BD 746E	   062D 	JZ	FLAG
+ 05BF BF850A			MOV	DI,OFFSET REGTAB
+ 05C2 92			XCHG	AX,DX
+ 05C3 0E			PUSH	CS
+ 05C4 07			POP	ES
+ 05C5 B90E00			MOV	CX,REGTABLEN
+ 05C8 F2AF			REPNZ	SCASW
+ 05CA 753D	   0609 	JNZ	BADREG
+ 05CC 0BC9			OR	CX,CX
+ 05CE 7507	   05D7 	JNZ	NOTPC
+ 05D0 4F			DEC	DI
+ 05D1 4F			DEC	DI
+ 05D2 2E8B85FEFF		MOV	AX,CS:[DI]-2
+			NOTPC:
+ 05D7 E806FD	   02E0 	CALL	OUT
+ 05DA 8AC4			MOV	AL,AH
+ 05DC E801FD	   02E0 	CALL	OUT
+ 05DF E809FD	   02EB 	CALL	BLANK
+ 05E2 1E			PUSH	DS
+ 05E3 07			POP	ES
+ 05E4 8D9D14FA			LEA	BX,REGDIF-2[DI]
+ 05E8 8B17			MOV	DX,[BX]
+ 05EA E8D7FC	   02C4 	CALL	OUT16
+CP/M ASM86 1.1  SOURCE: T186MON.A86   THUNDER 186 Rev 0.1 4/27/84					       PAGE  19
+
+
+ 05ED E871FC	   0261 	CALL	CRLF
+ 05F0 B03A			MOV	AL,':'
+ 05F2 E8EBFC	   02E0 	CALL	OUT
+ 05F5 E836FC	   022E 	CALL	INBUF
+ 05F8 E8A2FC	   029D 	CALL	SCANB
+ 05FB 740B	   0608 	JZ	RET4
+ 05FD B90400			MOV	CX,4
+ 0600 E868FE	   046B 	CALL	GETHEX1
+ 0603 E8DAFE	   04E0 	CALL	GETEOL
+ 0606 8917			MOV	[BX],DX
+ 0608 C3		RET4:	RET
+			BADREG:
+ 0609 B84252			MOV	AX,5200H+'B'	;BR ERROR
+ 060C E99600	   06A5 	JMP	ERR
+			DISPREG:
+ 060F BE850A			MOV	SI,offset REGTAB
+ 0612 BB9B04			MOV	BX,offset AXSAVE
+ 0615 B90800			MOV	CX,8
+ 0618 E86500	   0680 	CALL	DISPREGLINE
+ 061B E843FC	   0261 	CALL	CRLF
+ 061E B90500			MOV	CX,5
+ 0621 E85C00	   0680 	CALL	DISPREGLINE
+ 0624 E8C4FC	   02EB 	CALL	BLANK
+ 0627 E89300	   06BD 	CALL	DISPFLAGS
+ 062A E934FC	   0261 	JMP	CRLF
+			FLAG:
+ 062D 80FA46			CMP	DL,'F'
+ 0630 75D7	   0609 	JNZ	BADREG
+ 0632 E88800	   06BD 	CALL	DISPFLAGS
+ 0635 B02D			MOV	AL,'-'
+ 0637 E8A6FC	   02E0 	CALL	OUT
+ 063A E8F1FB	   022E 	CALL	INBUF
+ 063D E85DFC	   029D 	CALL	SCANB
+ 0640 33DB			XOR	BX,BX
+ 0642 8B16B504			MOV	DX,FSAVE
+			GETFLG:
+ 0646 8BF7			MOV	SI,DI
+ 0648 AD			LODSW
+ 0649 3C0D			CMP	AL,13
+ 064B 7466	   06B3 	JZ	SAVCHG
+ 064D 80FC0D			CMP	AH,13
+ 0650 7466	   06B8 	JZ	FLGERR
+ 0652 BFA10A			MOV	DI,offset FLAGTAB
+ 0655 B92000			MOV	CX,32
+ 0658 0E			PUSH	CS
+ 0659 07			POP	ES
+ 065A F2AF			REPNE	SCASW
+ 065C 755A	   06B8 	JNZ	FLGERR
+ 065E 8AE9			MOV	CH,CL
+ 0660 80E10F			AND	CL,0FH
+ 0663 B80100			MOV	AX,1
+ 0666 D3C0			ROL	AX,CL
+ 0668 85C3			TEST	AX,BX
+ 066A 7533	   069F 	JNZ	REPFLG
+ 066C 0BD8			OR	BX,AX
+ 066E 0BD0			OR	DX,AX
+ 0670 F6C510			TEST	CH,16
+ 0673 7502	   0677 	JNZ	NEXFLG
+ 0675 33D0			XOR	DX,AX
+			NEXFLG:
+ 0677 8BFE			MOV	DI,SI
+ 0679 1E			PUSH	DS
+ 067A 07			POP	ES
+ 067B E816FC	   0294 	CALL	SCANP
+ 067E EBC6	   0646 	JMPS	GETFLG
+			DISPREGLINE:
+ 0680 2EAD			LODS	CS:AX
+ 0682 E85BFC	   02E0 	CALL	OUT
+ 0685 8AC4			MOV	AL,AH
+ 0687 E856FC	   02E0 	CALL	OUT
+ 068A B03D			MOV	AL,'='
+ 068C E851FC	   02E0 	CALL	OUT
+ 068F 8B17			MOV	DX,[BX]
+ 0691 43			INC	BX
+CP/M ASM86 1.1  SOURCE: T186MON.A86   THUNDER 186 Rev 0.1 4/27/84					       PAGE  20
+
+
+ 0692 43			INC	BX
+ 0693 E82EFC	   02C4 	CALL	OUT16
+ 0696 E852FC	   02EB 	CALL	BLANK
+ 0699 E84FFC	   02EB 	CALL	BLANK
+ 069C E2E2	   0680 	LOOP	DISPREGLINE
+ 069E C3			RET
+			REPFLG:
+ 069F B84446			MOV	AX,4600H+'D'	;DF ERROR
+			FERR:
+ 06A2 E80E00	   06B3 	CALL	SAVCHG
+			ERR:
+ 06A5 E838FC	   02E0 	CALL	OUT
+ 06A8 8AC4			MOV	AL,AH
+ 06AA E833FC	   02E0 	CALL	OUT
+ 06AD BE040B			MOV	SI,offset ERRMES
+ 06B0 E940FE	   04F3 	JMP	PRINT
+			SAVCHG:
+ 06B3 8916B504			MOV	FSAVE,DX
+ 06B7 C3			RET
+			FLGERR:
+ 06B8 B84246			MOV	AX,4600H+'B'	;BF ERROR
+ 06BB EBE5	   06A2 	JMPS	FERR
+			DISPFLAGS:
+ 06BD BEA10A			MOV	SI,offset FLAGTAB
+ 06C0 B91000			MOV	CX,16
+ 06C3 8B16B504			MOV	DX,FSAVE
+			DFLAGS:
+ 06C7 2EAD			LODS	CS:AX
+ 06C9 D1E2			SHL	DX,1
+ 06CB 7205	   06D2 	JC	FLAGSET
+ 06CD 2E8B841E00		MOV	AX,CS:30[SI]
+			FLAGSET:
+ 06D2 0BC0			OR	AX,AX
+ 06D4 740B	   06E1 	JZ	NEXTFLG
+ 06D6 E807FC	   02E0 	CALL	OUT
+ 06D9 8AC4			MOV	AL,AH
+ 06DB E802FC	   02E0 	CALL	OUT
+ 06DE E80AFC	   02EB 	CALL	BLANK
+			NEXTFLG:
+ 06E1 E2E4	   06C7 	LOOP	DFLAGS
+ 06E3 C3			RET
+			LOAD:
+			;LOADS THE SPECIFIED NUMBER OF RECORDS FROM THE DISK STARTING AT
+			;THE SPECIFIED RECORD. DATA IS PLACED IN MEMORY BEGINING AT THE
+			;ADDRESS SPECIFIED.
+ 06E4 C606D00400		MOV	byte ptr DONTPRNT,FALSE ;ENABLE ERROR PRINTING
+ 06E9 1E			PUSH	DS		;SAVE THE OLD DATA SEGMET
+ 06EA E86300	   0750 	CALL	DISKSETUP	;GET ALL THE PARAMETERS
+ 06ED E83704	   0B27 	CALL	READ		;DO THE READ
+ 06F0 1F			POP	DS		;RESTORE THE DATA SEGMENT
+ 06F1 7306	   06F9 	JNC	RET5		;IF NO CARRY THEN NO ERROR
+ 06F3 BE3007			MOV	SI,offset BADREAD ;PRINT ERROR MESAGE IF THERE IS ERROR
+ 06F6 E9FAFD	   04F3 	JMP	PRINT
+ 06F9 C3		RET5:	RET
+
+			WRITE:
+			;WRITES MEMORY BEGINING AT THE SPECIFIED ADDRESS TO DISK BEGINING AT
+			;THE SPECIFIED RECORD ON THE DISK. A MAXIMUM OF 64K BYTES MAY BE
+			;WRITTEN.
+ 06FA C606D00400		MOV	byte ptr DONTPRNT,FALSE ;ENABLE ERROR PRINTING
+ 06FF 1E			PUSH	DS		;SAVE PRESENT DATA SEGMENT
+ 0700 E84D00	   0750 	CALL	DISKSETUP	;GET ALL THE PARAMETERS
+ 0703 E82F04	   0B35 	CALL	WRITEDSK	;DO THE WRITE
+ 0706 1F			POP	DS		;RESTORE THE DATA SEGMENT
+ 0707 73F0	   06F9 	JNC	RET5		;IF NO ERROR RETURN ELST
+ 0709 BE0F07			MOV	SI,offset BADWRITE ;PRINT ERROR MESSAGE
+ 070C E9E4FD	   04F3 	JMP	PRINT
+
+			BADWRITE:
+ 070F 0D0A556E6162		DB	CR,LF,'Unable to perform disk write',CR,LF,0
+      6C6520746F20
+      706572666F72
+      6D206469736B
+      207772697465
+CP/M ASM86 1.1  SOURCE: T186MON.A86   THUNDER 186 Rev 0.1 4/27/84					       PAGE  21
+
+
+      0D0A00
+			BADREAD:
+ 0730 0D0A556E6162		DB	CR,LF,'Unable to perform disk read',CR,LF,0
+      6C6520746F20
+      706572666F72
+      6D206469736B
+      20726561640D
+      0A00
+
+			DISKSETUP:
+			;GETS THE PARAMETERS FOR DISK OPERATIONS FROM THE COMMAND LINE.
+ 0750 B90500			MOV	CX,5		;5DIGIT ADDRESS FIRST
+ 0753 E812FD	   0468 	CALL	GETHEX
+ 0756 E8C8FB	   0321 	CALL	GETSEG		;CONVERT TO SEGMENT AND OFFSET
+ 0759 50			PUSH	AX		;SAVE THE SEGMENT
+ 075A 52			PUSH	DX		;SAVE THE TRANSFER OFFSET
+ 075B B90100			MOV	CX,1		;1 DIGIT DRIVE NUMBER NEXT
+ 075E E807FD	   0468 	CALL	GETHEX
+ 0761 52			PUSH	DX		;SAVE THE UNIT NUMBER
+ 0762 B90300			MOV	CX,3		;STARTING RECORD NUMBER NEXT
+ 0765 E800FD	   0468 	CALL	GETHEX		;GET THE NUMBER
+ 0768 52			PUSH	DX		;SAVE THE RECORD NUMBER
+ 0769 B90300			MOV	CX,3		;NUMBER OF RECORDS TO TRANSFER
+ 076C E8F9FC	   0468 	CALL	GETHEX		;GET IT
+ 076F 52			PUSH	DX
+ 0770 E86DFD	   04E0 	CALL	GETEOL		;CHECK FOR ERRORS
+ 0773 59			POP	CX		;PUT RECORDS TO TRANSFER IN CX
+ 0774 5A			POP	DX		;PUT OTHER PARAMETERS IN THE RIGHT
+ 0775 58			POP	AX		;REGISTERS
+ 0776 5B			POP	BX
+ 0777 1F			POP	DS
+ 0778 C3			RET			;ALL SET
+			BOOT:
+
+ 0779 E4D2			IN	AL,SWITCH_PORT		;FIND OUT IF 5.25 OR 8"
+ 077B A808                      TEST    AL,8H                   ;SWITCH 4 ON = 8"
+ 077D 7556	   07D5 	JNZ	BOOT_525
+
+			;Switch 4 on so boot from 8" system
+                        ;First try to boot as if the drive is double density. If that fails
+                        ;try to boot as single density. If both fail report unable to boot.
+                        ;If boot is sucessful the first 2 tracks are loaded at address 50:0
+                        ;an a GO command is executed to begin exicution at that point.
+
+ 077F C706B1045000              MOV     word ptr CSSAVE,50H ;SETS UP TO START EXECUTION AT 
+ 0785 C706B3040000              MOV     word ptr IPSAVE,0H    ;BEGINING OF DATA LOADED
+ 078B C706A3040004              MOV     word ptr SPSAVE,400H
+ 0791 C706AF040000              MOV     word ptr SSSAVE,0H      
+ 0797 C606D004FF                MOV     byte ptr DONTPRNT,TRUE ;DISABLE ERROR PRINTING FOR BOOT
+ 079C 57                        PUSH    DI              ;SAVE COMMAND POINTER
+                        DDBOOT:
+ 079D 1E                        PUSH    DS
+ 079E BB5000                    MOV     BX,50H          ;POINT TO SEGMENT TO READ TO
+ 07A1 8EDB                      MOV     DS,BX
+ 07A3 BB0000                    MOV     BX,0H           ;SET UP FOR DOUBLE DENSITY first
+ 07A6 B92000                    MOV     CX,20H          ;READ 32 1K SECTORS
+ 07A9 BA0000                    MOV     DX,0            ;STARTING AT SECTOR 1 TRACK 0
+ 07AC B002                      MOV     AL,2            ;INDICATE DS1 IN DD FORMAT
+ 07AE E87603       0B27         CALL    READ
+ 07B1 1F                        POP     DS
+ 07B2 731D         07D1         JNC     BOOTOK
+                        SDBOOT:
+ 07B4 1E                        PUSH    DS
+ 07B5 BB5000                    MOV     BX,50H
+ 07B8 8EDB                      MOV     DS,BX
+ 07BA BB0000                    MOV     BX,0H           ;SET UP READ PARAMETERS
+ 07BD B93400                    MOV     CX,52           ;READ THE WHOLE FIRST 2 TRACKS
+ 07C0 BA0000                    MOV     DX,0            ;STARTING WITH THE FIRST SECTOR
+ 07C3 B000                      MOV     AL,0            ;
+ 07C5 E85F03       0B27         CALL    READ            ;READ IT IN
+ 07C8 1F                        POP     DS 
+ 07C9 7306         07D1         JNC     BOOTOK          ;IF NO CARRY ALL'S OK
+                        boot_error:
+ 07CB BE0D08                    MOV     SI,offset BADBOOT
+CP/M ASM86 1.1  SOURCE: T186MON.A86   THUNDER 186 Rev 0.1 4/27/84                                             PAGE  22
+
+
+ 07CE E922FD       04F3         JMP     PRINT
+                        BOOTOK:
+ 07D1 5F                        POP     DI              ;RESTORE COMMAND STRING POINTER
+ 07D2 E93E02       0A13         JMP     GO              ;FINISH UP COMMAND LINE
+
+
+                        BOOT_525:
+ 07D5 C706B1040028              MOV     word ptr CSSAVE,2800H ;SETS UP TO START EXECUTION AT 
+ 07DB C706B3040000              MOV     word ptr IPSAVE,0H    ;BEGINING OF DATA LOADED
+ 07E1 C706A3040004              MOV     word ptr SPSAVE,400H
+ 07E7 C706AF040000              MOV     word ptr SSSAVE,0H      
+ 07ED C606D004FF                MOV     byte ptr DONTPRNT,TRUE ;DISABLE ERROR PRINTING FOR BOOT
+ 07F2 57                        PUSH    DI              ;SAVE COMMAND POINTER
+ 07F3 1E                        PUSH    DS
+ 07F4 BB0028                    MOV     BX,2800H                ;POINT TO SEGMENT TO READ TO
+ 07F7 8EDB                      MOV     DS,BX
+ 07F9 BB0000                    MOV     BX,0H
+ 07FC B90800                    MOV     CX,8H           ;read first track of 5.25 diskette 
+ 07FF BA0000                    MOV     DX,0            ;STARTING AT SECTOR 1 TRACK 0
+ 0802 B000                      MOV     AL,0            ;will read first 8 sector off any 5.25 
+ 0804 E82003       0B27         CALL    READ            ;double dens 512 byte sector diskette
+ 0807 1F                        POP     DS
+ 0808 73C7         07D1         JNC     BOOTOK
+ 080A E9BEFF       07CB         jmp     boot_error
+
+                        BADBOOT:
+ 080D 0D0A556E6162              DB      CR,LF,'Unable to boot in single or double density',CR,LF,0
+      6C6520746F20
+      626F6F742069
+      6E2073696E67
+      6C65206F7220
+      646F75626C65
+      2064656E7369
+      74790D0A00
+
+                        CONVERT:
+                        ;CONVERT DECIMAL QTY TO HEX AND DISPLAY.
+ 083C B90400                    MOV     CX,4            ;FOUR DIGIT NUMBER MAX
+ 083F E826FC       0468         CALL    GETHEX
+ 0842 BB0F00                    MOV     BX,0FH          ;MASK FOR LOW NIBLE
+ 0845 23DA                      AND     BX,DX           ;SAVE FIRTS NIBLE IN BX
+ 0847 B80F00                    MOV     AX,0FH          ;MASK FOR NEXT NIBLE
+ 084A B104                      MOV     CL,4            ;SHIFT VALUE
+ 084C D3EA                      SHR     DX,CL           ;SHIFT NEXT NIBLE RIGHT
+ 084E 52                        PUSH    DX              ;SAVE THE NEW VALUE
+ 084F 23C2                      AND     AX,DX           ;SAVE NEXT NIBLE IN AX
+ 0851 BA0A00                    MOV     DX,10
+ 0854 F7E2                      MUL     DX              ;MULTIPLY TENS DIGIT BY TEN
+ 0856 03D8                      ADD     BX,AX           ;PUT INTO CONVERTED VALUE
+ 0858 5A                        POP     DX              ;GET DX BACK
+ 0859 D3EA                      SHR     DX,CL           ;GET NEXT NIBLE
+ 085B 52                        PUSH    DX              ;SAVE NEW DX
+ 085C 81E20F00                  AND     DX,0FH          ;SAVE ONLY 100'S DIGIT
+ 0860 8BC2                      MOV     AX,DX
+ 0862 BA6400                    MOV     DX,100
+ 0865 F7E2                      MUL     DX
+ 0867 03D8                      ADD     BX,AX
+ 0869 5A                        POP     DX
+ 086A D3EA                      SHR     DX,CL
+ 086C 81E20F00                  AND     DX,0FH
+ 0870 8BC2                      MOV     AX,DX
+ 0872 BAE803                    MOV     DX,1000
+ 0875 F7E2                      MUL     DX
+ 0877 03D8                      ADD     BX,AX
+ 0879 8BD3                      MOV     DX,BX           ;PUT CONVERTED VALUE IN DX
+ 087B E846FA       02C4         CALL    OUT16
+ 087E E8E0F9       0261         CALL    CRLF
+ 0881 C3                        RET
+                        HEXARITH:
+                        ;PERFORM HEX ARITHMETIC ON THE TWO HEX NUMBERS GIVEN AS PARAMETERS
+ 0882 B90400                    MOV     CX,4
+ 0885 E8E0FB       0468         CALL    GETHEX
+ 0888 52                        PUSH    DX
+ 0889 B90400                    MOV     CX,4
+CP/M ASM86 1.1  SOURCE: T186MON.A86   THUNDER 186 Rev 0.1 4/27/84                                             PAGE  23
+
+
+ 088C E8D9FB       0468         CALL    GETHEX
+ 088F 52                        PUSH    DX
+ 0890 E801FA       0294         CALL    SCANP           ;NEXT PARAMETER
+ 0893 8A05                      MOV     AL,[DI]         ;GET THE NEXT CHARACTER
+ 0895 3C2B                      CMP     AL,'+'
+ 0897 740F         08A8         JE      ADDIT
+ 0899 3C2D                      CMP     AL,'-'
+ 089B 7416         08B3         JE      SUBT
+ 089D 3C2A                      CMP     AL,'*'
+ 089F 741D         08BE         JE      MULT
+ 08A1 3C2F                      CMP     AL,'/'
+ 08A3 7426         08CB         JE      DIVIDE
+ 08A5 E93EFC       04E6         JMP     PERR            ;NOT A VALID FUNCTION IF IT GETS HERE
+                        ADDIT:
+ 08A8 58                        POP     AX
+ 08A9 5A                        POP     DX
+ 08AA 03D0                      ADD     DX,AX
+ 08AC E815FA       02C4         CALL    OUT16
+ 08AF E8AFF9       0261         CALL    CRLF
+ 08B2 C3                        RET
+                        SUBT:
+ 08B3 58                        POP     AX
+ 08B4 5A                        POP     DX
+ 08B5 2BD0                      SUB     DX,AX
+ 08B7 E80AFA       02C4         CALL    OUT16
+ 08BA E8A4F9       0261         CALL    CRLF
+ 08BD C3                        RET
+                        MULT:
+ 08BE 5A                        POP     DX
+ 08BF 58                        POP     AX
+ 08C0 F7E2                      MUL     DX
+ 08C2 8BD0                      MOV     DX,AX
+ 08C4 E8FDF9       02C4         CALL    OUT16
+ 08C7 E897F9       0261         CALL    CRLF
+ 08CA C3                        RET
+                        DIVIDE:
+ 08CB 5B                        POP     BX
+ 08CC 58                        POP     AX
+ 08CD BA0000                    MOV     DX,0
+ 08D0 85DB                      TEST    BX,BX
+ 08D2 741A         08EE         JZ      DIVIDEERR
+ 08D4 F7F3                      DIV     BX
+ 08D6 92                        XCHG    AX,DX           ;QUOTIENT TO DX FOR PRINTING
+ 08D7 50                        PUSH    AX              ;SAVE REMAINDER
+ 08D8 E8E9F9       02C4         CALL    OUT16           ;PRINT QUOTIENT
+ 08DB E80DFA       02EB         CALL    BLANK           ;SPACE
+ 08DE B052                      MOV     AL,'R'          ;INDICATE REMAINDER
+ 08E0 E8FDF9       02E0         CALL    OUT
+ 08E3 E805FA       02EB         CALL    BLANK           ;ANOTHER SPACE
+ 08E6 5A                        POP     DX              ;GET REMAINDER BAK
+ 08E7 E8DAF9       02C4         CALL    OUT16           ;PRINT IT
+ 08EA E874F9       0261         CALL    CRLF
+ 08ED C3                        RET
+                        DIVIDEERR:
+ 08EE BEF408                    MOV     SI,offset BADDIVIDE
+ 08F1 E9FFFB       04F3         JMP     PRINT
+ 08F4 43616E277420      BADDIVIDE  DB   'Can''t divide by 0.',CR,LF,0
+      646976696465
+      20627920302E
+      0D0A00
+
+                        ;Trace 1 instruction or the number of instruction specified
+                        ;by the parameter using 8086 trace mode. Registers are all
+                        ;set according to values in save area
+
+                        TRACE:
+ 0909 E888F9       0294         CALL    SCANP
+ 090C E877FB       0486         CALL    HEXIN
+ 090F BA0100                    MOV     DX,1
+ 0912 7206         091A         JC      STOCNT
+ 0914 B90400                    MOV     CX,4
+ 0917 E84EFB       0468         CALL    GETHEX
+                        STOCNT:
+ 091A 89160204                  MOV     TCOUNT,DX
+CP/M ASM86 1.1  SOURCE: T186MON.A86   THUNDER 186 Rev 0.1 4/27/84                                             PAGE  24
+
+
+ 091E E8BFFB       04E0         CALL    GETEOL
+                        STEP:
+ 0921 C70600040000              MOV     word ptr BRKCNT,0
+ 0927 800EB60401                OR      byte ptr FSAVE+1,1
+                        EXIT:
+ 092C C7060C007009              MOV     word ptr .12,offset BREAKFIX
+ 0932 8C0E0E00                  MOV     word ptr .14,CS
+ 0936 C70604007709              MOV     word ptr .4,offset REENTER
+ 093C 8C0E0600                  MOV     word ptr .6,CS
+ 0940 FA                        CLI
+ 0941 C7063C007709              MOV     INT_15_OFF,offset REENTER
+ 0947 8C0E3E00                  MOV     INT_15_SEG,CS   ;SET UP FOR KEYBOARD TERMINATE
+ 094B BC9B04                    MOV     SP,offset STACK
+ 094E 58                        POP     AX
+ 094F 5B                        POP     BX
+ 0950 59                        POP     CX
+ 0951 5A                        POP     DX
+ 0952 5D                        POP     BP
+ 0953 5D                        POP     BP
+ 0954 5E                        POP     SI
+ 0955 5F                        POP     DI
+ 0956 07                        POP     ES
+ 0957 07                        POP     ES
+ 0958 17                        POP     SS
+ 0959 8B26A304                  MOV     SP,SPSAVE
+ 095D FF36B504                  PUSH    FSAVE
+ 0961 FF36B104                  PUSH    CSSAVE
+ 0965 FF36B304                  PUSH    IPSAVE
+ 0969 8E1EAB04                  MOV     DS,DSSAVE
+ 096D CF                        IRET
+ 096E EBB1         0921 STEP1:  JMPS    STEP
+
+                        ;Re-entry point from breakpoint. Need to decrement instruction
+                        ;pointer so it points to location where breakpoint actually
+                        ;occured.
+
+                        BREAKFIX:
+ 0970 87E5                      XCHG    SP,BP
+ 0972 FF4E00                    DEC     word ptr[BP]
+ 0975 87E5                      XCHG    SP,BP
+
+                        ;Re-entry point from trace mode or interrupt during
+                        ;execution. All registers are saved so they can be
+                        ;displayed or modified.
+
+                        REENTER:
+ 0977 50                        PUSH    AX
+ 0978 1E                        PUSH    DS
+ 0979 33C0                      XOR     AX,AX
+ 097B 8ED8                      MOV     DS,AX
+ 097D 8BC4                      MOV     AX,SP
+ 097F 050400                    ADD     AX,4            ;ADJUST THE SP TO VALUE BEFORE THE LAST 2 PUSH
+ 0982 A3A304                    MOV     word ptr SPSAVE,AX
+ 0985 8C16AF04                  MOV     SSSAVE,SS
+ 0989 1F                        POP     DS              ;RESTORE THE STACK
+ 098A 58                        POP     AX
+ 098B 33E4                      XOR     SP,SP
+ 098D 8ED4                      MOV     SS,SP
+ 098F BCAF04                    MOV     SP,offset RSTACK
+ 0992 06                        PUSH    ES
+ 0993 1E                        PUSH    DS
+ 0994 57                        PUSH    DI
+ 0995 56                        PUSH    SI
+ 0996 55                        PUSH    BP
+ 0997 4C                        DEC     SP
+ 0998 4C                        DEC     SP
+ 0999 52                        PUSH    DX
+ 099A 51                        PUSH    CX
+ 099B 53                        PUSH    BX
+ 099C 50                        PUSH    AX
+ 099D 16                        PUSH    SS
+ 099E 1F                        POP     DS
+ 099F 8B26A304                  MOV     SP,SPSAVE
+ 09A3 8E16AF04                  MOV     SS,SSSAVE
+CP/M ASM86 1.1  SOURCE: T186MON.A86   THUNDER 186 Rev 0.1 4/27/84                                             PAGE  25
+
+
+ 09A7 8F06B304                  POP     word ptr IPSAVE
+ 09AB 8F06B104                  POP     word ptr CSSAVE
+ 09AF 58                        POP     AX
+ 09B0 80E4FE                    AND     AH,0FEH
+ 09B3 A3B504                    MOV     FSAVE,AX
+ 09B6 8926A304                  MOV     SPSAVE,SP
+ 09BA 1E                        PUSH    DS
+ 09BB 07                        POP     ES
+ 09BC 1E                        PUSH    DS
+ 09BD 17                        POP     SS
+ 09BE BC9B04                    MOV     SP,offset STACK
+ 09C1 C7063C00640A              MOV     INT_15_OFF,OFFSET INT
+ 09C7 8C0E3E00                  MOV     INT_15_SEG,CS
+ 09CB FB                        STI
+ 09CC FC                        CLD
+ 09CD E891F8       0261         CALL    CRLF
+ 09D0 E83CFC       060F         CALL    DISPREG
+ 09D3 FF0E0204                  DEC     word ptr TCOUNT
+ 09D7 7595         096E         JNZ     STEP1
+                        ENDGO:
+ 09D9 BE0404                    MOV     SI,offset BPTAB
+ 09DC 8B0E0004                  MOV     CX,BRKCNT
+ 09E0 E310         09F2         JCXZ    COMJMP
+                        CLEARBP:
+ 09E2 8B5414                    MOV     DX,BPLEN[SI]
+ 09E5 AD                        LODSW
+ 09E6 50                        PUSH    AX
+ 09E7 E837F9       0321         CALL    GETSEG
+ 09EA 8EC0                      MOV     ES,AX
+ 09EC 8BFA                      MOV     DI,DX
+ 09EE 58                        POP     AX
+ 09EF AA                        STOSB
+ 09F0 E2F0         09E2         LOOP    CLEARBP
+ 09F2 E9FFF7       01F4 COMJMP: JMP     COMMAND
+
+                        ;Input from the specified port and display result
+
+                        INPUT:
+ 09F5 B90400                    MOV     CX,4            ;Port may have 4 digits
+ 09F8 E86DFA       0468         CALL    GETHEX          ;Get port number in DX
+ 09FB EC                        IN      AL,DX           ;Variable port input
+ 09FC E8CCF8       02CB         CALL    HEX             ;And display
+ 09FF E95FF8       0261         JMP     CRLF
+
+                        ;Output a value to specified port.
+
+                        OUTPUT:
+ 0A02 B90400                    MOV     CX,4            ;Port may have 4 digits
+ 0A05 E860FA       0468         CALL    GETHEX          ;Get port number
+ 0A08 52                        PUSH    DX              ;Save while we get data
+ 0A09 B90200                    MOV     CX,2            ;Byte output only
+ 0A0C E859FA       0468         CALL    GETHEX          ;Get data to output
+ 0A0F 92                        XCHG    AX,DX           ;Output data in AL
+ 0A10 5A                        POP     DX              ;Port in DX
+ 0A11 EE                        OUT     DX,AL           ;Variable port output
+ 0A12 C3                        RET
+
+                        ;Jump to program, setting up registers according to the
+                        ;save area. Up to 10 breakpoint addresses may be specified.
+
+                        GO:
+ 0A13 BB1804                    MOV     BX,offset LINEBUF
+ 0A16 33F6                      XOR     SI,SI
+                        GO1:
+ 0A18 E879F8       0294         CALL    SCANP
+ 0A1B 7419         0A36         JZ      EXEC
+ 0A1D B90500                    MOV     CX,5
+ 0A20 E845FA       0468         CALL    GETHEX
+ 0A23 8917                      MOV     [BX],DX
+ 0A25 8867ED                    MOV     byte ptr[BX]-BPLEN+1,AH
+ 0A28 43                        INC     BX
+ 0A29 43                        INC     BX
+ 0A2A 46                        INC     SI
+ 0A2B 83FE0B                    CMP     SI,BPMAX+1
+CP/M ASM86 1.1  SOURCE: T186MON.A86   THUNDER 186 Rev 0.1 4/27/84                                             PAGE  26
+
+
+ 0A2E 75E8         0A18         JNZ     GO1
+ 0A30 B84250                    MOV     AX,5000H+'B'    ;BP ERROR
+ 0A33 E96FFC       06A5         JMP     ERR
+                        EXEC:
+ 0A36 89360004                  MOV     word ptr BRKCNT,SI
+ 0A3A E8A3FA       04E0         CALL    GETEOL
+ 0A3D 8BCE                      MOV     CX,SI
+ 0A3F E31A         0A5B         JCXZ    NOBP
+ 0A41 BE0404                    MOV     SI,offset BPTAB
+                        SETBP:
+ 0A44 8B5414                    MOV     DX,BPLEN[SI]
+ 0A47 AD                        LODSW
+ 0A48 E8D6F8       0321         CALL    GETSEG
+ 0A4B 8ED8                      MOV     DS,AX
+ 0A4D 8BFA                      MOV     DI,DX
+ 0A4F 8A05                      MOV     AL,[DI]
+ 0A51 C605CC                    MOV     byte ptr [DI],0CCH
+ 0A54 06                        PUSH    ES
+ 0A55 1F                        POP     DS
+ 0A56 8844FE                    MOV     [SI]-2,AL
+ 0A59 E2E9         0A44         LOOP    SETBP
+                        NOBP:
+ 0A5B C70602040100              MOV     word ptr TCOUNT,1
+ 0A61 E9C8FE       092C         JMP     EXIT
+
+                        ;Console input interrupt handler. Used to interrupt commands
+                        ;or programs under execution (if they have interrupts
+                        ;enabled). Control-S causes a loop which waits for any other
+                        ;character to be typed. Control-C causes abort to command
+                        ;mode. All other characters are ignored.
+
+                        INT:
+ 0A64 50                        PUSH    AX              ;Don't destroy accumulator
+ 0A65 52                        PUSH    DX              ;Save this one too
+ 0A66 BA22FF                    MOV     DX,EOI_REG
+ 0A69 B80080                    MOV     AX,8000H        ;nonspecific eoi
+ 0A6C EF                        OUT     DX,AX
+ 0A6D 5A                        POP     DX              ;not used again now
+ 0A6E E480                      IN      AL,DATA         ;Get interrupting character
+ 0A70 247F                      AND     AL,7FH          ;ASCII has only 7 bits
+ 0A72 3C13                      CMP     AL,'S'-'@'      ;Check for Control-S
+ 0A74 7503         0A79         JNZ     NOSTOP
+ 0A76 E8F6F7       026F         CALL    IN              ;Wait for continue character
+                        NOSTOP:
+ 0A79 3C03                      CMP     AL,'C'-'@'      ;Check for Control-C
+ 0A7B 7402         0A7F         JZ      BREAK
+                        ;Just ignore interrupt - restore AX and return
+ 0A7D 58                        POP     AX
+ 0A7E CF                        IRET
+                        BREAK:
+ 0A7F E8DFF7       0261         CALL    CRLF
+ 0A82 E96FF7       01F4         JMP     COMMAND
+
+ 0A85 415842584358      REGTAB  DB      'AXBXCXDXSPBPSIDIDSESSSCSIPPC'
+      445853504250
+      534944494453
+      455353534353
+      49505043
+   FA16                 REGDIF  EQU     (offset AXSAVE)-(offset REGTAB) 
+
+                        ;Flags are ordered to correspond with the bits of the flag
+                        ;register, most significant bit first, zero if bit is not
+                        ;a flag. First 16 entries are for bit set, second 16 for
+                        ;bit reset.
+
+                        FLAGTAB:
+ 0AA1 0000                      DW      0
+ 0AA3 0000                      DW      0
+ 0AA5 0000                      DW      0
+ 0AA7 0000                      DW      0
+ 0AA9 4F56                      DB      'OV'
+ 0AAB 444E                      DB      'DN'
+ 0AAD 4549                      DB      'EI'
+ 0AAF 0000                      DW      0
+CP/M ASM86 1.1  SOURCE: T186MON.A86   THUNDER 186 Rev 0.1 4/27/84                                             PAGE  27
+
+
+ 0AB1 4E47                      DB      'NG'
+ 0AB3 5A52                      DB      'ZR'
+ 0AB5 0000                      DW      0
+ 0AB7 4143                      DB      'AC'
+ 0AB9 0000                      DW      0
+ 0ABB 5045                      DB      'PE'
+ 0ABD 0000                      DW      0
+ 0ABF 4359                      DB      'CY'
+ 0AC1 0000                      DW      0
+ 0AC3 0000                      DW      0
+ 0AC5 0000                      DW      0
+ 0AC7 0000                      DW      0
+ 0AC9 4E56                      DB      'NV'
+ 0ACB 5550                      DB      'UP'
+ 0ACD 4449                      DB      'DI'
+ 0ACF 0000                      DW      0
+ 0AD1 504C                      DB      'PL'
+ 0AD3 4E5A                      DB      'NZ'
+ 0AD5 0000                      DW      0
+ 0AD7 4E41                      DB      'NA'
+ 0AD9 0000                      DW      0
+ 0ADB 504F                      DB      'PO'
+ 0ADD 0000                      DW      0
+ 0ADF 4E43                      DB      'NC'
+
+ 0AE1 0D0A0A544855      HEADER  DB      13,10,10,'THUNDER 186 monitor Rev 0.10',13,10,0 
+      4E4445522031
+      3836206D6F6E
+      69746F722052
+      657620302E31
+      300D0A00
+ 0B03 5E                SYNERR  DB      '^'
+ 0B04 204572726F72      ERRMES  DB      ' Error',13,10,0 
+      0D0A00
+ 0B0D 08200800          BACMES  DB      8,32,8,0 
+
+
+   0006                 READCMND        EQU     6H      ;FDC COMAND EQUATES
+   0005                 WRITECMND       EQU     5H
+   0007                 RECALCMND       EQU     7H
+   0008                 SENSEINTCMND    EQU     8
+   0004                 SENSESTATUSCMND EQU     4H
+   000F                 SEEKCMND        EQU     0FH
+   0040                 MFM             EQU     40H
+   0009                 MAXTRIES        EQU     9       ;NUMBER OF TRIES BEFORE DISK ERROR
+
+                        ;The following routines are for the rom diskette read write routines.
+
+                        WRITEDSK1:
+ 0B11 33F6                      XOR     SI,SI
+ 0B13 8EC6                      MOV     ES,SI
+ 0B15 26C606D004FF              MOV     ES:byte ptr DONTPRNT,TRUE
+ 0B1B EB18         0B35         JMPS    WRITEDSK
+
+                        READ1:
+ 0B1D 33F6                      XOR     SI,SI
+ 0B1F 8EC6                      MOV     ES,SI
+ 0B21 26C606D004FF              MOV     ES:byte ptr DONTPRNT,TRUE
+
+                        READ:
+                        ;THE NUMBER OF SECTORS SPECIFIED ARE TRANSFERED BETWEEN THE GIVEN
+                        ;DRIVE AND THE TRANSFER ADDRESS.
+                        ;
+                        ;ON ENTRY:
+                        ;
+                        ;       AL=DRIVE NUMBER
+                        ;       CX=NUMBER OF RECORDS TO TRANSFER
+                        ;       DX=LOGICAL RECORD NUMBER
+                        ;       DS:BX=TRANSFER ADDRESS
+                        ;
+
+ 0B27 26C606B70406              MOV     ES:byte ptr CMND,READCMND
+ 0B2D 26C606C904FF              MOV     ES:byte ptr READFLAG,TRUE       ;INDICATE READ OPERATION
+ 0B33 EB0C         0B41         JMPS    COMMON                  ;GO TO THE COMMON CODE
+CP/M ASM86 1.1  SOURCE: T186MON.A86   THUNDER 186 Rev 0.1 4/27/84                                             PAGE  28
+
+
+
+                        WRITEDSK:
+                        ;THE SAME ENTRY CONDITIONS AS READ EXCEPT DATA IS TRANSFERED
+                        ;FROM MEMORY TO DISK.
+
+ 0B35 26C606B70405              MOV     ES:byte ptr CMND,WRITECMND      ;SET TO WRITE COMMAND
+ 0B3B 26C606C90400              MOV     ES:byte ptr READFLAG,FALSE      ;INDICATE WRITE OPERATION
+
+                        COMMON:
+ 0B41 26C606C00400              MOV     ES:byte ptr RETRY,0             ;SET NUMBER OF RETRIES TO 0
+                        ;       SAVE REGISTERS
+                        DSKRETRY:
+ 0B47 50                        PUSH    AX
+ 0B48 53                        PUSH    BX
+ 0B49 51                        PUSH    CX
+ 0B4A 52                        PUSH    DX
+ 0B4B 1E                        PUSH    DS
+ 0B4C 06                        PUSH    ES
+ 0B4D 268C1EC304                MOV     ES:DMASEG,DS
+ 0B52 06                        PUSH    ES
+ 0B53 1F                        POP     DS
+ 0B54 891EC104                  MOV     DMAOFF,BX       ;SAVE THE OFFSET
+ 0B58 8AD8                      MOV     BL,AL
+ 0B5A B700                      MOV     BH,0H
+ 0B5C E4D2                      in      al,switch_port
+ 0B5E A808                      test    al,8h                   ;5.25 or 8" ?
+ 0B60 750F	   0B71 	jnz	small_drive_op
+ 0B62 2E8A87E30E		MOV	CS:al, byte ptr UNITTAB[BX]
+ 0B67 A2B804			MOV	UNIT,AL
+ 0B6A D1E3			SHL	BX,1
+ 0B6C 2EFFA7BB0E		JMP	CS:JMPTBL[BX]
+			small_drive_op:
+ 0B71 2E8A87EB0E		MOV	CS:AL,byte ptr SD_UNITTAB[BX]
+ 0B76 A2B804			MOV	UNIT,AL
+ 0B79 D1E3			SHL	BX,1
+ 0B7B 2EFFA7CB0E		jmp	cs:sd_jmptbl[bx]	;do 5.25 disk operation
+
+			COMMON1:
+ 0B80 E82C00	   0BAF 	CALL	EXECUTE
+ 0B83 721E	   0BA3 	JC	COMMON3
+			;IF ERROR THEN DO
+			;	IF RETRY=MAXTRIES THEN
+			;		DO
+			;		GET NUMBER OF REMAINING SECTORS
+			;		RESTORE REGISTERS EXCEPT FOR CX
+			;		SET ERROR INDICATOR
+			;		RET
+			;		END
+ 0B85 A0C004			MOV	AL,RETRY
+ 0B88 3C09			CMP	AL,MAXTRIES
+ 0B8A 7C0C	   0B98 	JL	COMMON4
+ 0B8C 8B0EC504			MOV	CX,RTT
+ 0B90 07			POP	ES
+ 0B91 1F			POP	DS
+ 0B92 5A			POP	DX
+ 0B93 5B			POP	BX		;DONT RESTORE CX
+ 0B94 5B			POP	BX
+ 0B95 58			POP	AX
+ 0B96 F9			STC			;INDICATE ERROR
+ 0B97 C3			RET
+			;	ELSE DO
+			;		SHAKE HEAD ON DRIVE
+			;		TRY AGAIN
+			;		END
+			COMMON4:
+ 0B98 E84D02	   0DE8 	CALL	SHAKEHEAD
+ 0B9B 07			POP	ES
+ 0B9C 1F			POP	DS
+ 0B9D 5A			POP	DX
+ 0B9E 59			POP	CX
+ 0B9F 5B			POP	BX
+ 0BA0 58			POP	AX
+ 0BA1 EBA4	   0B47 	JMPS	DSKRETRY
+			;ELSE DO
+CP/M ASM86 1.1  SOURCE: T186MON.A86   THUNDER 186 Rev 0.1 4/27/84					       PAGE  29
+
+
+			;	SETUP FOR RETURN
+			;	INDICATE SUCCESS
+			;	RETURN
+			COMMON3:
+ 0BA3 8B0EC504			MOV	CX,RTT		;GET NUMBER OF RECORDS LEFT SHOULD
+							;BE 0 BECAUSE THIS IS THE SUCCESSFULL
+							;RETURN
+ 0BA7 07			POP	ES
+ 0BA8 1F			POP	DS
+ 0BA9 5A			POP	DX
+ 0BAA 5B			POP	BX
+ 0BAB 5B			POP	BX		;DON'T RESTORE CX
+ 0BAC 58			POP	AX
+ 0BAD F8			CLC			;INDICATE SUCCESS
+ 0BAE C3			RET
+			EXECUTE:
+ 0BAF E86B02	   0E1D 	CALL	SEEK		;SEEK SELECTED TRACK
+ 0BB2 BEB704			MOV	SI,offset IOPB	;POINT TO FDC COMMAND BLOCK
+ 0BB5 E88102	   0E39 	CALL	OUTIOPB 	;OUTPUT THE COMMAND BLOCK
+ 0BB8 F606C904FF	MORE:	TEST	byte ptr READFLAG,TRUE	;READ OPERATION?
+ 0BBD 7405	   0BC4 	JZ	WRITEEXEC	;IF NOT GO TO WRITE
+ 0BBF E8A700	   0C69 	CALL	INDATA		;READ SO GO BRING IN THE DATA
+ 0BC2 EB03	   0BC7 	JMPS	WRITEBYPASS
+			WRITEEXEC:
+ 0BC4 E87900	   0C40 	CALL	OUTDATA
+			WRITEBYPASS:
+ 0BC7 E304	   0BCD 	JCXZ	EXECUTE1	;DID TRANSFER OK IF CX=0
+ 0BC9 E82E00	   0BFA 	CALL	ERRORTERMINATE	;ELSE THERE WAS AN ERROR
+ 0BCC C3			RET
+			EXECUTE1:
+ 0BCD FF0EC504			DEC	word ptr RTT	;DECREMENT SECTOR COUNT
+ 0BD1 7423	   0BF6 	JZ	EXECUTEDONE	;IF 0 THEN DONE
+ 0BD3 A0BB04			MOV	AL,SECTOR	;ELSE SEE IF END OF TRACK
+ 0BD6 3A06BD04			CMP	AL,EOT
+ 0BDA 7407	   0BE3 	JE	NEXTTRACK	;IF IT IS GO TO NEXT TRACK ROUTINE
+ 0BDC FEC0			INC	AL		;IF NOT INCREMENT SECTOR NUMBER
+ 0BDE A2BB04			MOV	SECTOR,AL	;PUT IT BACK
+ 0BE1 EBD5	   0BB8 	JMPS	MORE		;GET MORE DATA
+			NEXTTRACK:
+ 0BE3 E82500	   0C0B 	CALL	NORMALTERMINATE ;STOP THE DISK OPERATION
+ 0BE6 7311	   0BF9 	JNC	EXECUTERETURN	;IF CARRY THEN ERROR DETECTED
+ 0BE8 FE06DB04			INC	byte ptr TRACK	;NEXT TRACK
+ 0BEC E8BF01	   0DAE 	CALL	FIXCYL		;ADJUST IF DOUBLE SIDED
+ 0BEF C606BB0401		MOV	byte ptr SECTOR,1 ;FIRST SECTOR
+ 0BF4 EBB9	   0BAF 	JMPS	EXECUTE 	;GO GET MORE DATA
+			EXECUTEDONE:
+ 0BF6 E81200	   0C0B 	CALL	NORMALTERMINATE ;ALL DONE STOP THE DISK CONTROLLER
+			EXECUTERETURN:
+ 0BF9 C3			RET
+
+			ERRORTERMINATE:
+ 0BFA E8FB01	   0DF8 	CALL	TC		;STOP THE PRESENT COMMAND
+ 0BFD E88E02	   0E8E 	CALL	WTINT		;WAIT FOR THE INTERRUPT
+ 0C00 E80B02	   0E0E 	CALL	INRSLT		;GET THE RESULTS OF THE COMMAND
+ 0C03 E82000	   0C26 	CALL	PRINTERR
+ 0C06 E86002	   0E69 	CALL	SENSE		;CLEAR THE INTERRUPT
+ 0C09 F8			CLC			;SET ERROR INDICATION
+ 0C0A C3			RET
+
+			NORMALTERMINATE:
+ 0C0B E8EA01	   0DF8 	CALL	TC		;STOP THE 8272
+ 0C0E E87D02	   0E8E 	CALL	WTINT		;WAIT FOR THE INTERRUPT
+ 0C11 E8FA01	   0E0E 	CALL	INRSLT		;GET THE RESULTS FROM THE 8272
+ 0C14 E8EC01	   0E03 	CALL	CHECK		;GHECK THE RESULTS FOR AN ERROR
+ 0C17 7305	   0C1E 	JNC	DISKERROR	;IF THE IS AN ERROR GO TO ERROR ROUTINE
+ 0C19 E84D02	   0E69 	CALL	SENSE		;CLEAR THE INTERRUPT
+ 0C1C F9			STC			;INDICATE ALL OK
+ 0C1D C3			RET
+			DISKERROR:
+ 0C1E E80500	   0C26 	CALL	PRINTERR
+ 0C21 E84502	   0E69 	CALL	SENSE		;CLEAR THE INTERRUPT
+ 0C24 F8			CLC			;INDICATE FAILURE
+ 0C25 C3		RET6:	RET
+
+CP/M ASM86 1.1  SOURCE: T186MON.A86   THUNDER 186 Rev 0.1 4/27/84					       PAGE  30
+
+
+			PRINTERR:
+			;PRINTS THE STATUS FRMOMTHE FDC AFTER AN ERROR
+ 0C26 F606D004FF		TEST	byte ptr DONTPRNT,TRUE ;DONT PRINT IF DISABLED
+ 0C2B 75F8	   0C25 	JNZ	RET6
+ 0C2D BED104			MOV	SI,offset RSLTS
+ 0C30 B90700			MOV	CX,7		;7 BYTES TO PRINT
+				
+			PNTERRLOOP:
+ 0C33 AC			LODSB			;GET THE BYTE
+ 0C34 E894F6	   02CB 	CALL	HEX		;PRINT IT
+ 0C37 E8B1F6	   02EB 	CALL	BLANK		;SPACE
+ 0C3A E2F7	   0C33 	LOOP	PNTERRLOOP	;DO UNTILL ALL 7 PRINTED
+ 0C3C E822F6	   0261 	CALL	CRLF		;NEW LINE
+ 0C3F C3			RET
+
+			OUTDATA:
+ 0C40 FC			CLD			;SET TO INCREMENTING MOVE
+ 0C41 8B36C104			MOV	SI,DMAOFF	;GET THE OFFSET OF THE DMA BUFFER
+ 0C45 8B0ECA04			MOV	CX,TRANSFER	;GET THE NUMBER OF BYTES TO WRITE
+ 0C49 1E			PUSH	DS		;SAVE THE PRESENT SEGMENT
+ 0C4A 8E1EC304			MOV	DS,DMASEG	;GET THE DMA SEGMENT
+ 0C4E BA9200			MOV	DX,FDC_DATA	;GET A POINTER TO THE 8272 DMA PORT
+ 0C51 B480			MOV	AH,80H		;GET TEST BYTE FOR INTERRUPT TEST
+ 0C53 B320			MOV	BL,020H 	;TEST BYTE FOR EXECUTION PHASE
+			OUTDATA1:
+ 0C55 E490			IN	AL,FDC_STATUS	;WAIT FOR RQM
+ 0C57 84C4			TEST	AL,AH
+ 0C59 74FA	   0C55 	JZ	OUTDATA1
+ 0C5B 84C3			TEST	AL,BL		;STILL IN EXECUTION PHASE?
+ 0C5D 7404	   0C63 	JZ	OUTDATA2	;IF 0 THEN EXECUTION PHASE IS DONE(PROBABLE
+							;ERROR)
+ 0C5F AC			LODSB			;GET BYTE FROM THE DMA BUFFER
+ 0C60 EE			OUT	DX,AL		;WRITE IT TO THE 8272
+ 0C61 E2F2	   0C55 	LOOP	OUTDATA1	;IF NOT ALL DONE(CX=0) DO AGAIN
+			OUTDATA2:
+ 0C63 1F			POP	DS		;RESTORE THE OLD DATA SEGMENT
+ 0C64 8936C104			MOV	DMAOFF,SI	;SAVE THE NEW BUFFER OFFSET VALUE
+ 0C68 C3			RET
+
+			INDATA:
+ 0C69 FC			CLD			;SET TO INCREMENTING MOVE
+ 0C6A 8B3EC104			MOV	DI,DMAOFF	;GET BUFFER OFFSET POINTER
+ 0C6E 8B0ECA04			MOV	CX,TRANSFER	;GET NUMBER OF BYTES TO READ
+ 0C72 06			PUSH	ES		;SAVE THE PRESENT EXTRA SEGMENT
+ 0C73 8E06C304			MOV	ES,DMASEG	;GET DMA SEGMENT
+ 0C77 BA9200			MOV	DX,FDC_DATA	;POINTER TO 8272 DMA PORT
+ 0C7A B480			MOV	AH,80H		;GET BYTE TO USE IN RQM TEST
+ 0C7C B320			MOV	BL,020H 	;TEST BYTE FOR EXECUTION PHASE
+			INDATA1:
+ 0C7E E490			IN	AL,FDC_STATUS	;WAIT FOR RQM
+ 0C80 84C4			TEST	AL,AH
+ 0C82 74FA	   0C7E 	JZ	INDATA1
+ 0C84 84C3			TEST	AL,BL		;STILL IN EXECUTION PHASE?
+ 0C86 7404	   0C8C 	JZ	INDATA2 	;IF NOT THEN QUIT (PROBABLE ERROR)
+ 0C88 EC			IN	AL,DX		;GET THE BYTE FROM THE 8272
+ 0C89 AA			STOSB			;PUT IT IN THE BUFFER
+ 0C8A E2F2	   0C7E 	LOOP	INDATA1 	;DO UNTIL CX=0
+			INDATA2:
+ 0C8C 07			POP	ES		;RESTORE THE OLD ES
+ 0C8D 893EC104			MOV	DMAOFF,DI	;SAVE NEW DMA BUFFER OFFSET
+ 0C91 C3			RET
+
+			SDSETUP:
+ 0C92 C606DC0400		MOV	byte ptr DBLSDD,FALSE
+ 0C97 8BC2			MOV	AX,DX			;COMPUTE THE TRACK AND SECTOR
+ 0C99 B21A			MOV	DL,26
+ 0C9B F6F2			DIV	DL
+ 0C9D A2DB04			MOV	byte ptr TRACK,AL	;SAVE THE TRACK NUMBER
+ 0CA0 FEC4			INC	AH			;SECTOR = 1 TO 26 SO INC FIRST
+ 0CA2 8826BB04			MOV	SECTOR,AH		;SAVE THE SECTOR
+ 0CA6 E80501	   0DAE 	CALL	FIXCYL			;CHECK AND SET UP FOR DOUBLE DENSITY
+ 0CA9 C606BC0400		MOV	byte ptr NBYTES,0	;0 FOR 128 BYTE SECTORS
+ 0CAE C606BD041A		MOV	byte ptr EOT,26 	;26 SECTORS FOR SINGLE DENSITY
+ 0CB3 C606BE0407		MOV	byte ptr GPL,07 	;GAP3 LENGTH FOR 8272
+CP/M ASM86 1.1  SOURCE: T186MON.A86   THUNDER 186 Rev 0.1 4/27/84					       PAGE  31
+
+
+ 0CB8 C606BF0480		MOV	byte ptr DTL,128	;128 BYTES/SECTOR
+ 0CBD C706CA048000		MOV	word ptr TRANSFER,128	;128 BYTES TO TRANSFER PER SECTOR
+ 0CC3 890EC504			MOV	RTT,CX			;NUMBER OF SECTORS TO READ OR WRITE
+ 0CC7 E8CC00	   0D96 	CALL	SELECT_8
+ 0CCA E9B3FE	   0B80 	JMP	COMMON1
+
+			DSSETUP:
+ 0CCD C606DC04FF		MOV	byte ptr DBLSDD,TRUE
+ 0CD2 EB05	   0CD9 	JMPS	SETUP
+			DDSETUP:
+ 0CD4 C606DC0400		MOV	byte ptr DBLSDD,FALSE
+			SETUP:
+ 0CD9 8BC2			MOV	AX,DX
+ 0CDB B208			MOV	DL,8
+ 0CDD F6F2			DIV	DL
+ 0CDF A2DB04			MOV	TRACK,AL
+ 0CE2 FEC4			INC	AH
+ 0CE4 8826BB04			MOV	SECTOR,AH
+ 0CE8 E8C300	   0DAE 	CALL	FIXCYL
+			DD2:
+ 0CEB C606BC0403		MOV	byte ptr NBYTES,03	;1024 BYTE SECTORS IN DOUBLE DEN
+ 0CF0 C606BD0408		MOV	byte ptr EOT,08 	;8 SECTORS/TRACK
+ 0CF5 C606BE0435		MOV	byte ptr GPL,35H	;35H GAP3 LENGTH IN DD MODE
+ 0CFA C606BF04FF		MOV	byte ptr DTL,0FFH	;FF FOR OTHER THAN 128 BYTE SECTORS
+ 0CFF C706CA040004		MOV	word ptr TRANSFER,1024	;1024 BYTES PER SECTOR TO TRANSFER
+ 0D05 890EC504			MOV	RTT,CX			;SAVE NUMBER OF SECTORS TO TRANSFER
+ 0D09 A0B704			MOV	AL,CMND 		;GET COMMAND FROM IOPB
+ 0D0C 0C40			OR	AL,MFM			;SET TO DOUBLE DENSITY
+ 0D0E A2B704			MOV	CMND,AL 		;RETURN THE COMMAND
+ 0D11 E88200	   0D96 	CALL	SELECT_8		;SET FDC PARAMETERS FOR 8"
+ 0D14 E969FE       0B80         JMP     COMMON1
+
+                        SS9SPTMINISETUP:
+ 0D17 C606DC0400                MOV     byte ptr DBLSDD,FALSE
+ 0D1C C606BD0409                MOV     EOT,9
+ 0D21 EB22         0D45         JMPS    MINISETUPCONT
+                        SSMINISETUP:
+ 0D23 C606DC0400                MOV     byte ptr DBLSDD,FALSE
+ 0D28 C606BD0408                MOV     EOT,8
+ 0D2D EB16         0D45         JMPS    MINISETUPCONT
+
+                        DS9SPTMINISETUP:
+ 0D2F C606DC04FF                MOV     byte ptr DBLSDD,TRUE
+ 0D34 C606BD0409                MOV     EOT,9 
+ 0D39 EB0A         0D45         JMPS    MINISETUPCONT 
+                        DSMINISETUP:
+ 0D3B C606BD0408                MOV     EOT,8
+ 0D40 C606DC04FF                MOV     byte ptr DBLSDD,TRUE    ;ALWAYS DOUBLE SIDED
+                        MINISETUPCONT:
+ 0D45 8BC2                      MOV     AX,DX           ;COMPUTE TRACK AND SECTOR
+ 0D47 B208                      MOV     DL,8            ;8 SECTORS PER TRACK
+ 0D49 F6F2                      DIV     DL
+ 0D4B A2DB04                    MOV     TRACK,AL
+ 0D4E FEC4                      INC     AH
+ 0D50 8826BB04                  MOV     SECTOR,AH
+ 0D54 E85700       0DAE         CALL    FIXCYL
+ 0D57 C606BC0402                MOV     byte ptr NBYTES,2       ;512 BYTE SECTORS
+ 0D5C C606BE042A                MOV     byte ptr GPL,2AH
+ 0D61 C606BF04FF                MOV     byte ptr DTL,0FFH
+ 0D66 C706CA040002              MOV     word ptr TRANSFER,512   ;512 BYTES PER SECTOR
+ 0D6C 890EC504                  MOV     RTT,CX
+ 0D70 A0B704                    MOV     AL,CMND
+ 0D73 0C40                      OR      AL,MFM          ;SET DOUBLE DENSITY MODE
+ 0D75 A2B704                    MOV     byte ptr CMND,AL        ;REPLACE MODIFIED COMMAND
+ 0D78 E80300       0D7E         CALL    SELECT_514              ;5 1/4 PARAMETER SETTING
+ 0D7B E902FE       0B80         JMP     COMMON1
+
+                        SELECT_514:
+ 0D7E B00E                      MOV     AL,01110B       ;clear bit 7 of port C on 8255
+ 0D80 E6D6                      OUT     PAR_CTRL,AL
+ 0D82 B00B                      MOV     AL,01011B       ;SET BIT 5 TO ASSERT READY
+ 0D84 E6D6                      OUT     PAR_CTRL,AL 
+ 0D86 B003                      MOV     AL,03
+ 0D88 E8BC00       0E47         CALL    OUTFDC
+CP/M ASM86 1.1  SOURCE: T186MON.A86   THUNDER 186 Rev 0.1 4/27/84                                             PAGE  32
+
+
+ 0D8B B0CF                      MOV     AL,0CFH
+ 0D8D E8B700       0E47         CALL    OUTFDC
+ 0D90 B065                      MOV     AL,65H          ;NON-DMA MODE
+ 0D92 E8B200       0E47         CALL    OUTFDC
+ 0D95 C3                        RET
+
+                        SELECT_8:
+ 0D96 B00F                      MOV     AL,01111B       ;SET BIT 7 OF PORT C ON 8255
+ 0D98 E6D6                      OUT     PAR_CTRL,AL
+ 0D9A B00A                      MOV     AL,01010B       ;CLEAR BIT 5
+ 0D9C E6D6                      OUT     PAR_CTRL,AL
+ 0D9E B003                      MOV     AL,03H
+ 0DA0 E8A400       0E47         CALL    OUTFDC
+ 0DA3 B08F                      MOV     AL,8FH
+ 0DA5 E89F00       0E47         CALL    OUTFDC
+ 0DA8 B041                      MOV     AL,41H          ;NON-DMA MODE
+ 0DAA E89A00       0E47         CALL    OUTFDC
+ 0DAD C3                        RET
+
+                        FIXCYL:
+ 0DAE F606DC04FF                TEST    byte ptr DBLSDD,TRUE
+ 0DB3 7422         0DD7         JZ      FIXCYL1
+ 0DB5 A0DB04                    MOV     AL,TRACK
+ 0DB8 D0E8                      SHR     AL,1 
+ 0DBA A2B904                    MOV     byte ptr CYL,AL
+ 0DBD 730C         0DCB         JNC     HEAD0
+ 0DBF C606BA0401                MOV     byte ptr HEAD,1
+ 0DC4 800EB80404                OR      byte ptr UNIT,4H
+ 0DC9 EB1C         0DE7         JMPS    FIXCYLRET
+                        HEAD0:
+ 0DCB C606BA0400                MOV     byte ptr HEAD,0
+ 0DD0 8026B80403                AND     byte ptr UNIT,03H
+ 0DD5 EB10         0DE7         JMPS    FIXCYLRET
+                        FIXCYL1:
+ 0DD7 C606BA0400                MOV     byte ptr HEAD,0
+ 0DDC 8026B80403                AND     byte ptr UNIT,03H
+ 0DE1 A0DB04                    MOV     AL,TRACK
+ 0DE4 A2B904                    MOV     CYL,AL
+                        FIXCYLRET:
+ 0DE7 C3                        RET
+
+                        SHAKEHEAD:
+ 0DE8 A0C004                    MOV     AL,RETRY        ;INC THE RETRY COUNT
+ 0DEB FEC0                      INC     AL
+ 0DED A2C004                    MOV     RETRY,AL
+ 0DF0 3C01                      CMP     AL,1            ;IS THIS THE FIRST RETRY?
+ 0DF2 7503         0DF7         JNE     SHRET           ;IF NOT RETURN TO CALLING ROUTINE
+ 0DF4 E88300       0E7A         CALL    RECAL           ;ELSE HOME HEAD AND TRY AGAIN
+ 0DF7 C3                SHRET:  RET
+
+                        ;TC ISSUES A TC PULSE TO THE FDC TO TERMINATE THE PRESENT COMMAND.
+                        TC:     
+ 0DF8 B00D                      MOV     AL,01101B       ;SET BIT 6 OF PORTC
+ 0DFA E6D6                      OUT     PAR_CTRL,AL
+ 0DFC 50                        PUSH    AX
+ 0DFD 58                        POP     AX              ;KILL SOME TIME
+ 0DFE B00C                      MOV     AL,01100B       ;NO BACK TO 0
+ 0E00 E6D6                      OUT     PAR_CTRL,AL
+ 0E02 C3                        RET
+
+                        ;CHECK CHECKS THE RESULTS OF THE LAST READ OR WRITE OPERATION.
+                        ;IF ANY BITS EXCEPT THE END OF CYLINDER FLAG ARE SET THE CARRY
+                        ;FLAG IS CLEARED TO INDICATE AN ERROR.
+
+                        CHECK:
+ 0E03 A0D204                    MOV     AL,ST1 
+ 0E06 247F                      AND     AL,7FH
+ 0E08 7502         0E0C         JNZ     CERR
+ 0E0A F9                        STC                     ;INDICATE ALL OK
+ 0E0B C3                        RET
+ 0E0C F8                CERR:   CLC
+ 0E0D C3                        RET                     ;ERROR RETURN WITH NO CARRY
+
+
+CP/M ASM86 1.1  SOURCE: T186MON.A86   THUNDER 186 Rev 0.1 4/27/84                                             PAGE  33
+
+
+                        INRSLT:
+                        ;GETS THE RESULTS FROM THE FDC AFTER THE COMPLETION OF A
+                        ;COMMAND.
+ 0E0E 57                        PUSH    DI
+ 0E0F FC                        CLD
+ 0E10 BFD104                    MOV     DI,offset ST0           ;POINT TO RESULT AREA
+ 0E13 E84300       0E59 B005:   CALL    INFDC
+ 0E16 7303         0E1B         JNC     B004            ;READ THE FDC UNTIL IT CHANGES
+                                                        ;FROM THE INPUT`STATE TO THE OUTPUT
+                                                        ;STATE
+ 0E18 AA                        STOSB
+ 0E19 EBF8         0E13         JMPS    B005
+ 0E1B 5F                B004:   POP     DI
+ 0E1C C3                        RET
+
+                        SEEK:
+                        ;CAUSES A SEEK TO THE TRACK SPECIFIED IN THE GLOBAL PARAMETER
+                        ;CYL ON THE UNIT SPECIFIED IN THE GLOBAL PARAMETER UNIT.
+ 0E1D 50                        PUSH    AX
+ 0E1E B00F              SEEK1:  MOV     AL,SEEKCMND
+ 0E20 E82400       0E47         CALL    OUTFDC
+ 0E23 A0B804                    MOV     AL,UNIT
+ 0E26 2403                      AND     AL,03H
+ 0E28 E81C00       0E47         CALL    OUTFDC
+ 0E2B A0B904                    MOV     AL,CYL
+ 0E2E E81600       0E47         CALL    OUTFDC
+ 0E31 E86100       0E95         CALL    WAIT_SEEK_DONE
+ 0E34 E83200       0E69         CALL    SENSE
+ 0E37 58                        POP     AX
+ 0E38 C3                        RET
+
+                        OUTIOPB:
+ 0E39 50                        PUSH    AX
+ 0E3A 51                        PUSH    CX
+ 0E3B B90900                    MOV     CX,9
+                        OUTIOPB1:
+ 0E3E AC                        LODSB
+ 0E3F E80500       0E47         CALL    OUTFDC
+ 0E42 E2FA         0E3E         LOOP    OUTIOPB1
+ 0E44 59                        POP     CX
+ 0E45 58                        POP     AX
+ 0E46 C3                        RET
+
+                        OUTFDC:
+                        ;OUTPUTS THE BYTE IN AL TO THE COMMAND PORT OF THE FDC
+                        ;IF THe FDC IS IN THE WRONG STATE I.E. IN THE INPUT MODE
+                        ;THE CARRY FLAG IS SET ON RETURN.
+
+ 0E47 50                        PUSH    AX
+ 0E48 E490              B006:   IN      AL,FDC_STATUS
+ 0E4A A880                      TEST    AL,80H
+ 0E4C 74FA         0E48         JZ      B006
+ 0E4E A840                      TEST    AL,40H
+ 0E50 58                        POP     AX
+ 0E51 7504         0E57         JNZ     B007
+ 0E53 E692                      OUT     FDC_COMMAND,AL
+ 0E55 F9                        STC
+ 0E56 C3                        RET
+                        B007:
+ 0E57 F8                        CLC
+ 0E58 C3                        RET
+
+                        INFDC:
+                        ;INPUTS A BYTE FROM THE RESULT REGISTER AND RETURNS IT IN AL.
+                        ;IF THE FDC IS IN THE WRONG MODE (OUTPUT RATHER THE INPUT MODE)
+                        ;THE CARRY FLAG IS CLEAR ON RETURN.
+
+ 0E59 E490              B008:   IN      AL,FDC_STATUS 
+ 0E5B A880                      TEST    AL,80H
+ 0E5D 74FA         0E59         JZ      B008
+ 0E5F A840                      TEST    AL,40H
+ 0E61 7404         0E67         JZ      B009
+ 0E63 E492                      IN      AL,FDC_DATA
+ 0E65 F9                        STC
+CP/M ASM86 1.1  SOURCE: T186MON.A86   THUNDER 186 Rev 0.1 4/27/84                                             PAGE  34
+
+
+ 0E66 C3                        RET
+ 0E67 F8                B009:   CLC
+ 0E68 C3                RET7:   RET
+
+                        SENSE:
+                        ;CAUSES A SENSE INTERRUPT STATUS COMMAND TO BE EXECUTED AND
+                        ;GETS THE RESULTS OF`THE COMMAND. THE RESULTS ARE RETURNED 
+                        ;IN GLOBAL PARAMETERS ST0 AND ST1.
+ 0E69 B008                      MOV     AL,08H
+ 0E6B E8D9FF       0E47         CALL    OUTFDC
+ 0E6E E8E8FF       0E59         CALL    INFDC
+ 0E71 3C80                      CMP     AL,80H
+ 0E73 74F3         0E68         JE      RET7 
+ 0E75 E8E1FF       0E59         CALL    INFDC
+ 0E78 EBEF         0E69         JMPS    SENSE
+
+                        RECAL:
+                        ;MOVES THE HEAD ON THE SPECIFIED DRIVE TO THE HOME POSITION.
+ 0E7A B007                      MOV     AL,07H
+ 0E7C E8C8FF       0E47         CALL    OUTFDC
+ 0E7F A0B804                    MOV     AL,byte ptr UNIT
+ 0E82 2403                      AND     AL,03H
+ 0E84 E8C0FF       0E47         CALL    OUTFDC
+ 0E87 E80B00       0E95         CALL    WAIT_SEEK_DONE
+ 0E8A E8DCFF       0E69         CALL    SENSE
+ 0E8D C3                        RET
+
+                        WTINT:
+                        ;WAITS FOR THE INTERRUPT LINE FROM THE FDC TO BECOME ACTIVE.
+
+ 0E8E E490                      IN      AL,FDC_STATUS
+ 0E90 A820                      TEST    AL,020H         ;NONDMA MODE BIT GOES TO 0 AFTER EXEC PHASE 
+ 0E92 75FA         0E8E         JNZ     WTINT 
+ 0E94 C3                        RET 
+
+                        WAIT_SEEK_DONE:
+ 0E95 B008                      MOV     AL,SENSE_INT_CMND
+ 0E97 E8ADFF       0E47         CALL    OUTFDC
+ 0E9A E8BCFF       0E59         CALL    INFDC
+ 0E9D A820                      TEST    AL,20H                  ;INTERRUPT COMPLETE STATUS?
+ 0E9F 750C         0EAD         JNZ     WAIT_SEEK_DONE_RET      ;IF A '1' THEN DONE
+ 0EA1 3C80                      CMP     AL,80H                  ;NO OP
+ 0EA3 7403         0EA8         JE      WAIT_SEEK_DONE_DELAY
+ 0EA5 E8B1FF       0E59         CALL    INFDC
+                        WAIT_SEEK_DONE_DELAY:
+ 0EA8 E80600       0EB1         CALL    KILL_TIME
+ 0EAB EBE8         0E95         JMPS    WAIT_SEEK_DONE
+                        WAIT_SEEK_DONE_RET:
+ 0EAD E8A9FF       0E59         CALL    INFDC                   ;GET LAST BYTE OF COMMAND
+ 0EB0 C3                        RET
+
+                        KILL_TIME: 
+ 0EB1 51                        PUSH    CX
+ 0EB2 B9E803                    MOV     CX,1000
+                        KILL_TIME_LOOP:
+ 0EB5 50                        PUSH    AX
+ 0EB6 58                        POP     AX
+ 0EB7 E2FC         0EB5         LOOP    KILL_TIME_LOOP
+ 0EB9 59                        POP     CX
+ 0EBA C3                        RET
+
+
+                        JMPTBL:
+ 0EBB 920C                      DW      SDSETUP
+ 0EBD 920C                      DW      SDSETUP
+ 0EBF D40C                      DW      DDSETUP
+ 0EC1 D40C                      DW      DDSETUP
+ 0EC3 CD0C                      DW      DSSETUP
+ 0EC5 CD0C                      DW      DSSETUP
+ 0EC7 230D                      DW      SSMINISETUP
+ 0EC9 3B0D                      DW      DSMINISETUP 
+                        SD_JMPTBL:
+ 0ECB 230D                      DW      SSMINISETUP
+ 0ECD 230D                      DW      SSMINISETUP
+CP/M ASM86 1.1  SOURCE: T186MON.A86   THUNDER 186 Rev 0.1 4/27/84                                             PAGE  35
+
+
+ 0ECF 230D                      DW      SSMINISETUP
+ 0ED1 3B0D                      DW      DSMINISETUP
+ 0ED3 3B0D                      DW      DSMINISETUP
+ 0ED5 3B0D                      DW      DSMINISETUP
+ 0ED7 170D                      DW      SS9SPTMINISETUP
+ 0ED9 170D                      DW      SS9SPTMINISETUP
+ 0EDB 170D                      DW      SS9SPTMINISETUP
+ 0EDD 2F0D                      DW      DS9SPTMINISETUP
+ 0EDF 2F0D                      DW      DS9SPTMINISETUP
+ 0EE1 2F0D                      DW      DS9SPTMINISETUP
+                        UNITTAB:
+ 0EE3 00                        DB      0
+ 0EE4 01                        DB      1
+ 0EE5 00                        DB      0
+ 0EE6 01                        DB      1
+ 0EE7 00                        DB      0
+ 0EE8 01                        DB      1
+ 0EE9 02                        DB      2
+ 0EEA 02                        DB      2
+                        SD_UNITTAB:
+ 0EEB 00                        DB      0
+ 0EEC 01                        DB      1
+ 0EED 02                        DB      2
+ 0EEE 00                        DB      0
+ 0EEF 01                        DB      1
+ 0EF0 02                        DB      2
+ 0EF1 00                        DB      0
+ 0EF2 01                        DB      1
+ 0EF3 02                        DB      2
+ 0EF4 00                        DB      0
+ 0EF5 01                        DB      1
+ 0EF6 02                        DB      2
+
+                        ;Memory tests for inclusion in the monitor.
+                        ;
+                        ;Test 0 tests the specified range for the ability to store 0's
+                        ;Format:
+                        ; 
+                        ;       V 0 (starting segment) (number of segments) (itteration count)
+                        ;       example: V 0 40 1000 10
+                        ;       Fills memory begining at 40:0 for 1000 segments with 0's
+                        ;       and then verifies that range. This is done 16 times.
+                        ;
+                        ;Test 1 tests the specified range for the ability to store 1's
+                        ;Format:
+                        ;
+                        ;       V 1 (starting segment) (number of segments) (itteration count)
+                        ;
+                        ;Test 2 test the specified range for the ability to hold an alternating
+                        ;1's and 0's pattern. The segment under test is first written with 055h
+                        ;and verified and then written with 0aah and then verified.
+                        ;Format:
+                        ;
+                        ;       V 2 (starting segment) (number of segments) (itteration count)
+                        ;
+                        ;Test 3 tests memory over the specified range with a shifting 1 in the 
+                        ;locations being tested. In order to test each location with any one
+                        ;bit set an itteration count of 8 or more should be specified.
+                        ;Format:
+                        ;
+                        ;       V 3 (starting segment) (number of ssegments) (itteration count)
+                        ;
+                        ;Test 4 tests memory over the specified range for a rotating 0 pattern.
+                        ;In order to test each location with all possible single bits clear an
+                        ;itteration count of 8 must be specified.
+                        ;Format:
+                        ;
+                        ;       V 4 (starting segment) (number of segments) (itteration count)
+                        ;
+                        VTEST:
+ 0EF7 B90100                    MOV     CX,1            ;GET TEST NUMBER
+ 0EFA E86BF5       0468         CALL    GETHEX  
+ 0EFD 80FA04                    CMP     DL,4
+ 0F00 7E03         0F05         JLE     VTESTCONT
+CP/M ASM86 1.1  SOURCE: T186MON.A86   THUNDER 186 Rev 0.1 4/27/84                                             PAGE  36
+
+
+ 0F02 E9E1F5       04E6         JMP     PERR
+                        VTESTCONT:
+ 0F05 52                        PUSH    DX
+ 0F06 B90400                    MOV     CX,4            ;GET THE STARTING SEGMENT
+ 0F09 E85CF5       0468         CALL    GETHEX
+ 0F0C 8916DF04                  MOV     FIRSTSEG,DX     ;SAVE IT
+ 0F10 B90400                    MOV     CX,4            ;GET THE NUMBER OF SEGMENTS TO TEST
+ 0F13 E852F5       0468         CALL    GETHEX
+ 0F16 8916E104                  MOV     NUMSEGS,DX      ;SAVE IT
+ 0F1A B90400                    MOV     CX,4            ;GET THE ITTERATION COUNT
+ 0F1D E848F5       0468         CALL    GETHEX
+ 0F20 8916E304                  MOV     LOOPCNT,DX
+ 0F24 E8B9F5       04E0         CALL    GETEOL          ;MAKE SURE END OF COMMAND STRING
+ 0F27 C706E5040000              MOV     ERRORS,0        ;ZERO ERROR COUNT
+ 0F2D 5B                        POP     BX
+ 0F2E D1E3                      SHL     BX,1            ;TIMES 2 FOR OFFSET INTO JMP TABLE
+ 0F30 2EFFA7DC0F                JMP     CS:TSTTBL[BX]   ;GO START EXECUTING THE TEST
+
+                        TEST0:
+ 0F35 B000                      MOV     AL,0            ;TEST VALUE
+                        TEST0B:
+ 0F37 E83F00       0F79         CALL    TESTEXEC        ;GO TEST THE MEMORY
+ 0F3A FF0EE304                  DEC     LOOPCNT         ;DECREMENT THE ITTERATION COUNT
+ 0F3E 75F7         0F37         JNZ     TEST0B          ;IF NOT DONE EXECUTE THE TEST AGAIN
+                        TEST0C:
+ 0F40 BEE60F                    MOV     SI,offset TSTMSG1       ;ANNOUNCE END OF TEST WITH ERROR COUNT
+ 0F43 E843F3       0289         CALL    PRINTMES
+ 0F46 8B16E504                  MOV     DX,ERRORS       ;GET THE NUMBER OR ERRORS, 64K MAX COUNT
+ 0F4A E877F3       02C4         CALL    OUT16           ;PRINT IT
+ 0F4D E911F3       0261         JMP     CRLF            ;EXIT TO COMMAND AGAIN
+                        TEST1:
+ 0F50 B0FF                      MOV     AL,0FFH         ;TEST MEMORY WITH 1'S
+ 0F52 EBE3         0F37         JMPS    TEST0B          
+                        TEST2:
+ 0F54 B055                      MOV     AL,055H         ;TEST WITH FIRST ALTERNATING PATERN
+ 0F56 E82000       0F79         CALL    TESTEXEC
+ 0F59 B0AA                      MOV     AL,0AAH         ;OTHER ALTERNATING PATTERN
+ 0F5B E81B00       0F79         CALL    TESTEXEC
+ 0F5E FF0EE304                  DEC     LOOPCNT
+ 0F62 75F0         0F54         JNZ     TEST2           ;DO AGAIN IF NOT COMPLETE
+ 0F64 EBDA         0F40         JMPS    TEST0C          ;OTHERWISE PRINT TERMINATION MESSAGE
+                        TEST3:
+ 0F66 B001                      MOV     AL,1            ;STARTING PATTERN FOR ROTATING 1 TEST
+                        TEST3A:
+ 0F68 E80E00       0F79         CALL    TESTEXEC        ;DO THE TEST
+ 0F6B FF0EE304                  DEC     LOOPCNT         ;DECREMENT ITTERATION COUNT
+ 0F6F 74CF         0F40         JZ      TEST0C          ;PRINT EXIT INFO IF DONE
+ 0F71 D0C0                      ROL     AL,1            ;OTHERWISE ROTATE THE PATTERN
+ 0F73 EBF3         0F68         JMPS    TEST3A          ;AND DO IT ALL AGAIN
+                        TEST4:
+ 0F75 B0FE                      MOV     AL,0FEH         ;SAME AS TEST 3 WITH ROTATING 0
+ 0F77 EBEF         0F68         JMPS    TEST3A
+
+                        TESTEXEC:
+ 0F79 8B0EE104                  MOV     CX,NUMSEGS      ;GET NUMBER OF SEGMENTS TO TEST
+ 0F7D 8B1EDF04                  MOV     BX,FIRSTSEG
+ 0F81 06                        PUSH    ES              ;SAVE CURRENT ES SEGMENT
+                        TESTEXECLOOP:
+ 0F82 8EC3                      MOV     ES,BX           ;SET UP ACCESABILITY TO NEXT 16 BYTE BLOCK
+ 0F84 BF0000                    MOV     DI,0            ;OFFSET WITHIN BLOCK
+ 0F87 51                        PUSH    CX              ;SAVE LOOP COUNT
+ 0F88 B91000                    MOV     CX,16           ;16 BYTES PER PARAGRAPH
+ 0F8B F3AA                      REP     STOSB           ;FILL 16 BYTES WITH DATA
+ 0F8D BF0000                    MOV     DI,0            ;RESET TO SEE IF DATA IS THERE
+ 0F90 B91000                    MOV     CX,16
+                        REENTR:
+ 0F93 F3AE                      REPE    SCASB           ;SCAN 16 BYTES FOR CORRECT DATA
+ 0F95 7506         0F9D         JNE     REPORT          ;REPORT ERROR IF LAST COMPARE NOT EQUAL
+                        REENTR1:
+ 0F97 43                        INC     BX              ;NEXT PARAGRAPH
+ 0F98 59                        POP     CX              ;GET NUMBER OF PARAGRAPHS BACK
+ 0F99 E2E7         0F82         LOOP    TESTEXECLOOP    ;DO UNTILL ALL PARAGRAPHS DONE
+ 0F9B 07                        POP     ES              ;GET BACK ORIGINAL ES
+ 0F9C C3                        RET                     ;ALL DONE TESTING ONE PASS
+CP/M ASM86 1.1  SOURCE: T186MON.A86   THUNDER 186 Rev 0.1 4/27/84                                             PAGE  37
+
+
+
+                        REPORT:
+ 0F9D 50                        PUSH    AX
+ 0F9E 53                        PUSH    BX
+ 0F9F 51                        PUSH    CX
+ 0FA0 52                        PUSH    DX
+ 0FA1 57                        PUSH    DI              ;SAVE WORK REGISTERS
+ 0FA2 8B1EE504                  MOV     BX,ERRORS       ;HOW MANY ERRORS HAVE THERE BEEN
+ 0FA6 43                        INC     BX              ;INCREMENT IT
+ 0FA7 742A         0FD3         JZ      REPORTEXIT      ;IF AT MAX COUNT DONT SAVE NEW VALUE
+ 0FA9 891EE504                  MOV     ERRORS,BX       ;OTHERWISE SAVE NEW ERROR COUNT
+ 0FAD 83FB0A                    CMP     BX,10           ;SHOULD WE PRINT THE ERROR?
+ 0FB0 7721         0FD3         JA      REPORTEXIT      ;IF TEN OR MORE ERRORS SKIP PRINTING
+ 0FB2 50                        PUSH    AX              ;SAVE TEST VALUE BYT
+ 0FB3 BEF00F                    MOV     SI,offset TSTMSG2 ;PRINT 'Address '
+ 0FB6 E8D0F2       0289         CALL    PRINTMES
+ 0FB9 4F                        DEC     DI              ;POINT AT FAILING LOCATION
+ 0FBA E8F8F2       02B5         CALL    OUTDI           ;PRINT AS 5 DIGIT ABSOLUTE ADDRESS
+ 0FBD BEFB0F                    MOV     SI,offset TSTMSG3 ;PRINT ' Expected data '
+ 0FC0 E8C6F2       0289         CALL    PRINTMES
+ 0FC3 58                        POP     AX              ;GET EXPECTED DATA BACK
+ 0FC4 E804F3       02CB         CALL    HEX             ;PRINT AL IN HEX
+ 0FC7 BE0B10                    MOV     SI,offset TSTMSG4       ;PRINT ' Actual data '
+ 0FCA E8BCF2       0289         CALL    PRINTMES
+ 0FCD 268A05                    MOV     AL,ES:[DI]
+ 0FD0 E8F8F2       02CB         CALL    HEX             ;PRINT IT
+                        REPORTEXIT:
+ 0FD3 5F                        POP     DI              ;RESTORE SAVED REGISTERS
+ 0FD4 5A                        POP     DX
+ 0FD5 59                        POP     CX
+ 0FD6 5B                        POP     BX
+ 0FD7 58                        POP     AX
+ 0FD8 E3BD         0F97         JCXZ    REENTR1         ;IF DONE WITH PRESENT SEGMENT DO NEXT
+ 0FDA EBB7         0F93         JMPS    REENTR          ;IF NOT DONE WITH SEGMENT FINISH
+                        TSTTBL:
+ 0FDC 350F                      DW      TEST0
+ 0FDE 500F                      DW      TEST1
+ 0FE0 540F                      DW      TEST2
+ 0FE2 660F                      DW      TEST3
+ 0FE4 750F                      DW      TEST4
+                        TSTMSG1:
+ 0FE6 0D0A4572726F              DB      CR,LF,'Errors ',0 
+      72732000
+                        TSTMSG2:
+ 0FF0 0D0A41646472              DB      CR,LF,'Address ',0
+      6573732000
+                        TSTMSG3:
+ 0FFB 204578706563              DB      ' Expected data ',0
+      746564206461
+      74612000
+                        TSTMSG4:
+ 100B 204163747561              DB      ' Actual data ',0
+      6C2064617461
+      2000
+
+=                       INCLUDE         INIT186.A86
+=                               ORG     1C00H           ;ORG TO LAST 1K OF MEMORY SO UMCS WILL BE
+=                                                       ;ACTIVE
+=                       START:
+=1C00 8CC8                      MOV     AX,CS
+=1C02 8ED8                      MOV     DS,AX
+=1C04 8EC0                      MOV     ES,AX
+=1C06 BE291C                    MOV     SI,OFFSET INIT_TABLE
+=1C09 FC                        CLD
+=                       INIT_LOOP:
+=1C0A AD                        LODSW                   ;GET PORT ADDRESS
+=1C0B 85C0                      TEST    AX,AX           ;IF 0 THEN DONE INIT
+=1C0D 7406         1C15         JZ      DONE_INIT1      ;DONE WITH 80186 INIT IF 0
+=1C0F 8BD0                      MOV     DX,AX
+=1C11 AD                        LODSW                   ;GET THE VALUE TO SEND
+=1C12 EF                        OUT     DX,AX           ;OUTPUT IT TO THE REGISTER
+=1C13 EBF5         1C0A         JMPS    INIT_LOOP
+=                       DONE_INIT1:
+=1C15 BE5F1C                    MOV     SI,OFFSET PERIPHERAL_INIT_TAB
+CP/M ASM86 1.1  SOURCE: T186MON.A86   THUNDER 186 Rev 0.1 4/27/84                                             PAGE  38
+
+
+=1C18 BA0000                    MOV     DX,0            ;RANGE OF 80H TO 0FFH SO DH ALWAYS 0
+=                       INIT_LOOP1:
+=1C1B AC                        LODSB                   ;GET ADDRESS, ADDRESS OF 0 TERMINATES
+=1C1C 84C0                      TEST    AL,AL
+=1C1E 7406         1C26         JZ      DONE_INIT2
+=1C20 8AD0                      MOV     DL,AL
+=1C22 AC                        LODSB
+=1C23 EE                        OUT     DX,AL           ;OUTPUT TABLE DATA TO TABLE I/O DEVICE
+=1C24 EBF5         1C1B         JMPS    INIT_LOOP1
+=                       DONE_INIT2:
+=1C26 E9ECE3       0015         JMP     INIT            ;START MONITOR EXECUTION
+=
+=  1C29                 INIT_TABLE      EQU     $
+=1C29 A0FF                      DW      UMCS_REG
+=1C2B 00F0                      DW      UMCS_VALUE
+=1C2D A2FF                      DW      LMCS_REG
+=1C2F F83F                      DW      LMCS_VALUE
+=1C31 A4FF                      DW      PACS_REG
+=1C33 3A00                      DW      PACS_VALUE
+=1C35 A6FF                      DW      MMCS_REG
+=1C37 3840                      DW      MMCS_VALUE
+=1C39 A8FF                      DW      MPCS_REG
+=1C3B 38A0                      DW      MPCS_VALUE
+=1C3D 52FF                      DW      MAX_CNT_REGA_TMR0
+=1C3F 0600                      DW      REGA_9600
+=1C41 54FF                      DW      MAX_CNT_REGB_TMR0
+=1C43 0700                      DW      REGB_9600
+=1C45 56FF                      DW      TMR0_CONTROL_REG
+=1C47 03C0                      DW      TMR0_CTRL_REG_VAL
+=1C49 5AFF                      DW      MAX_CNT_REGA_TMR1
+=1C4B 0600                      DW      REGA_9600
+=1C4D 5CFF                      DW      MAX_CNT_REGB_TMR1
+=1C4F 0700                      DW      REGB_9600
+=1C51 5EFF                      DW      TMR1_CONTROL_REG
+=1C53 03C0                      DW      TMR1_CTRL_REG_VAL
+=1C55 62FF                      DW      MAX_CNT_REG_TMR2
+=1C57 204E                      DW      TMR2_REGA_DIVISOR
+=1C59 66FF                      DW      TMR2_CONTROL_REG
+=1C5B 01E0                      DW      TMR2_CTRL_REG_VAL
+=1C5D 0000                      DW      0
+=
+=                       PERIPHERAL_INIT_TAB:
+=1C5F 82                        DB      SER_PORT1_COMMAND       ;INIT USART 1, FIRST 3 NULS
+=1C60 00                        DB      0
+=1C61 82                        DB      SER_PORT1_COMMAND
+=1C62 00                        DB      0
+=1C63 82                        DB      SER_PORT1_COMMAND
+=1C64 00                        DB      0
+=1C65 82                        DB      SER_PORT1_COMMAND       ;NOW RESET IT
+=1C66 40                        DB      USART_RESET
+=1C67 82                        DB      SER_PORT1_COMMAND       ;NEW MODE
+=1C68 CE                        DB      USART_MODE
+=1C69 82                        DB      SER_PORT1_COMMAND       ;ENABLE TX AND RX ASSERT RTS, DTR
+=1C6A 37                        DB      USART_INST
+=1C6B C2                        DB      SER_PORT2_COMMAND       ;NOW SAME FOR USART2
+=1C6C 00                        DB      0
+=1C6D C2                        DB      SER_PORT2_COMMAND
+=1C6E 00                        DB      0
+=1C6F C2                        DB      SER_PORT2_COMMAND
+=1C70 00                        DB      0
+=1C71 C2                        DB      SER_PORT2_COMMAND
+=1C72 40                        DB      USART_RESET
+=1C73 C2                        DB      SER_PORT2_COMMAND
+=1C74 CE                        DB      USART_MODE
+=1C75 C2                        DB      SER_PORT2_COMMAND
+=1C76 37                        DB      USART_INST
+=1C77 D6                        DB      PAR_CTRL                ;NOW INIT 8255
+=1C78 82                        DB      PAR_PORT_MODE           ;SET MODE
+=1C79 D4                        DB      PORTC                   ;SET PORT C TO INITIAL VALUE
+=1C7A 0F                        DB      PORTC_INITIAL
+=1C7B 00                        DB      0                       ;**** END OF INIT TABLE ****
+=
+
+
+CP/M ASM86 1.1  SOURCE: T186MON.A86   THUNDER 186 Rev 0.1 4/27/84                                             PAGE  39
+
+
+                                ORG     1FF0H           
+ 1FF0 EA001C00FE                JMPF    START   ;GO DO 186 INITIALIZATION
+ 1FF5 00                        DB      0       ;OPTIONS BIT MAPPED
+ 1FF6 00                        DB      0       ;FOLLOWING 6 BYTES HOLD PLACE FOR 8089 INIT
+ 1FF7 00                        DB      0       ;NOT USED ON 186 BOARD
+ 1FF8 0000                      DW      0
+ 1FFA 0000                      DW      0
+ 1FFC 03                        DB      3       ;PROCESOR BOARD TYPE 
+                                                ;1 = LIGHTNING ONE
+                                                ;2 = LIGHTNING 286
+                                                ;3 = THUNDER 186
+ 1FFD 03                        DB      3       ;REV OF MONITOR 
+
+
+END OF ASSEMBLY.  NUMBER OF ERRORS:   0.  USE FACTOR: 19%
+NOÿ

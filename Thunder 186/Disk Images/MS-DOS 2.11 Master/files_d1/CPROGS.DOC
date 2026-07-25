@@ -1,0 +1,64 @@
+There are three programs written in 'C' on this diskette. They are
+public domain programs and may be modified and distributed as you see
+fit. The three programs are TABIFY, PRINT, and CALC.
+
+TABIFY processes an input file combining a group of spaces into tabs
+where ever posible. The form of the command is:
+
+	TABIFY INPUTFILE OUTPUTFILE
+  ex:	TABIFY BIOS.LST BIOS.TAB
+
+PRNT processes an input file expanding tabs and sends it to an output
+file which may be the printer if PRN: is specified. PRNT additionally
+allows addition of a left margin and top margin.The values of these are
+specified after PRNT starts execution. If no margins are desired enter
+0 when prompted. The form of the command is:
+
+	PRNT INPUTFILE OUTPUTFILE
+  ex:	PRNT BIOS.LST PRN:	   Prints the LST file on the printer
+	PRNT BIOS.ASM BIOS.PRN    processes the file for later dumping to ptr
+	PRNT BIOS.ASM CON:        copies the file to the console for viewing
+				   before printing
+
+CALC is a simple calculator which uses reverse Polish notation. The
+functions provided are +, -, *, and /. The following is a sample of use:
+
+	CALC
+	2 2 + =
+		4.0000000
+	2 * =
+		8.0000000
+
+FUNCTIONS:
+	
+	-	minus
+	+	addition
+	*	multiplication
+	/	division
+	^	exponentiation
+	c	clear stack
+	=	print top stack element and leave on stack
+
+The following functions have been added to the calculator:
+	
+	sin	sin of an angle expresed in radians
+	cos	cos of an angle expresed in radians
+	tan	tangent of an angle expresed in radians
+	asin	the inverse sin
+	acos	the inverse cosine
+	atan	the inverse tangent
+	sqrt	square root of the top of the stack
+	exp	e raised to the value on the top of stack e^st
+	ln	the natural log of the stack top
+	loq	log10 of the stack top
+	pow	10^st (10 raised to the value of the stack top (inv log)
+	swap	swap the top of stack and stack top -1
+	inv	replace stack top with 1/stack top
+	pop	pop the top of stack
+	clr	clear the whole stack
+	quit	exit to dos
+
+Any comments on these programs should be written. These programs are not
+supported by LDP, and are included only as examples of useful programs 
+written in 'C'.
+
